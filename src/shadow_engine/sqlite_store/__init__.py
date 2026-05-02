@@ -1,0 +1,1 @@
+"""SQLite Store — Thread-safe, concurrent SQLite backend for the knowledge graph."""

@@ -1,0 +1,1 @@
+"""Learning Engine — Cross-session learning: pattern extraction, efficacy tracking, and compounding intelligence."""

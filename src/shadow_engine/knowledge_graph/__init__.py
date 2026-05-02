@@ -1,0 +1,1 @@
+"""Knowledge Graph — Persistent semantic understanding of the codebase across sessions."""

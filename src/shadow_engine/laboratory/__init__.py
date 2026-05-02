@@ -1,0 +1,1 @@
+"""Laboratory — Parallel experimentation: spawn N sessions with different approaches, compare results."""
