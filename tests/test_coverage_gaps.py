@@ -1,8 +1,6 @@
 """Tests for remaining coverage gaps: indexer edge cases, vector store fallbacks,
 CLI commands, OpenInspect bridge, and migration path."""
 
-import json
-import sys
 from pathlib import Path
 
 import pytest
@@ -11,7 +9,7 @@ from shadow_engine.knowledge_graph.indexer import (
     CodebaseIndexer,
     compute_file_hash,
 )
-from shadow_engine.knowledge_graph.models import Symbol, SymbolKind, FileSummary
+from shadow_engine.knowledge_graph.models import Symbol, SymbolKind
 from shadow_engine.chroma_store.vector_store import ChromaSymbolStore
 
 

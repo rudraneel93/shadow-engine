@@ -6,16 +6,12 @@ not just Python async callbacks. Tests semaphore, timeout, retry, and scoring on
 
 import asyncio
 import time
-from pathlib import Path
 
 import pytest
 
 from shadow_engine.laboratory.experiment import (
     ExperimentRunner,
     ExperimentStatus,
-    ExperimentVariant,
-    ExperimentBatch,
-    WinnerSelection,
 )
 from shadow_engine.async_lab.executor import AsyncExperimentExecutor, run_experiment_with_retry
 
