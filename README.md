@@ -48,6 +48,41 @@ The same 3 tasks were tested across **3 different local models** to validate con
 
 ---
 
+## 🧠 Meta-Reasoning Engine (v0.4.0)
+
+Shadow Engineer doesn't just dump your codebase into a prompt. It provides **meta-reasoning priors** — classification, strategy recommendation, and historical efficacy data — before the knowledge graph context:
+
+```markdown
+## Shadow Engineer — Context for ChatGPT
+
+### Problem Classification
+- **Type**: bug_fix (confidence: 0.95)
+- **Recommended Approach**: Targeted Fix
+- **Expected Success Rate**: 100%
+- **Best Model**: claude-sonnet-4-6
+
+### Historical Insight
+- Based on 5 previous attempts, 'Targeted Fix' succeeds 100% of the time with claude-sonnet-4-6.
+
+### Knowledge Graph Context
+#### Semantically Relevant Symbols
+- **ChromaSymbolStore** (`class`) in `chroma_store/vector_store.py` (relevance: 0.89)
+  Vector-backed symbol search using ChromaDB...
+```
+
+**Pipeline: Task → Classification → Strategy → Context → Prompt**
+
+| Problem Type | Best Approach | Success Rate | Best Model |
+|-------------|--------------|-------------|------------|
+| bug_fix | Targeted Fix | 100% (5/5) | claude-sonnet-4-6 |
+| feature | Extensible Implementation | 100% (3/3) | claude-sonnet-4-6 |
+| testing | TDD First | 100% (3/3) | qwen3:8b |
+| refactor | Incremental Rewrite | 100% (3/3) | qwen3:8b |
+
+> Build real efficacy data: `python scripts/build_efficacy_data.py`
+
+---
+
 ## Table of Contents
 
 1. [What Is Shadow Engineer?](#what-is-shadow-engine)
