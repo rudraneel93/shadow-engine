@@ -175,6 +175,11 @@ async def experiment(task: str = Query(...), variants: int = Query(3, ge=1, le=1
 
 @router.post("/sessions/ingest", response_model=IngestResponse)
 async def ingest_session(result: SessionResult, engine: ShadowEngine = Depends(get_engine), _: None = Depends(verify_api_key)):
+    from ..knowledge_graph.models import AgentOutcome
+    try:
+        AgentOutcome(result.outcome)
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"Invalid outcome '{result.outcome}'. Must be one of: success, failure, rejected, abandoned")
     ingestion = engine.record_result(session_id=result.session_id, outcome=result.outcome, prompt=result.prompt, approach=result.approach, model=result.model, pr_url=result.pr_url, files_changed=result.files_changed, test_results={"total": result.tests_passed + result.tests_failed, "passed": result.tests_passed, "failed": result.tests_failed}, review_comments=result.review_comments, duration_seconds=result.duration_seconds, token_count=result.token_count)
     return IngestResponse(status=ingestion["status"], problem_type=ingestion["problem_type"], classification_confidence=ingestion.get("classification_confidence", 0.0), was_successful=ingestion["was_successful"], patterns_learned=len(ingestion.get("patterns_learned", [])))
 

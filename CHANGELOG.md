@@ -2,7 +2,7 @@
 
 All notable changes to Shadow Engineer will be documented in this file.
 
-## [1.0.0] — 2026-05-03
+## [0.1.0] — 2026-05-03 (Beta)
 
 ### Added
 - **Knowledge Graph Engine:** Persistent codebase indexing with symbol extraction for 7 languages (Python, TypeScript/TSX, JavaScript/JSX, Go, Rust)
@@ -43,4 +43,4 @@ All notable changes to Shadow Engineer will be documented in this file.
 
 | Version | Date | Type | Description |
 |---------|------|------|-------------|
-| **1.0.0** | 2026-05-03 | Initial | First public release |
+| **0.1.0** | 2026-05-03 | Beta | Initial public beta release |
