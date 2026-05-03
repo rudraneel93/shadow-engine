@@ -4,10 +4,10 @@
     <strong>A self-improving background agent with persistent codebase knowledge graph and parallel experimentation.</strong>
   </p>
   <p align="center">
-    <a href="https://github.com/shadow-engine/shadow-engine/actions"><img src="https://img.shields.io/badge/CI-passing-brightgreen" alt="CI"></a>
+    <a href="https://github.com/rudraneel93/shadow-engine/actions"><img src="https://img.shields.io/badge/CI-passing-brightgreen" alt="CI"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
     <a href="https://pypi.org/project/shadow-engine"><img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python"></a>
-    <a href="https://github.com/shadow-engine/shadow-engine/blob/main/API_DOCS.md"><img src="https://img.shields.io/badge/docs-API_DOCS.md-orange" alt="Docs"></a>
+    <a href="https://github.com/rudraneel93/shadow-engine/blob/main/API_DOCS.md"><img src="https://img.shields.io/badge/docs-API_DOCS.md-orange" alt="Docs"></a>
   </p>
 </p>
 
@@ -24,12 +24,12 @@ Shadow Engineer was tested end-to-end with **Ollama qwen3:8b (5.2 GB local LLM)*
 | Metric | Result | Grade |
 |--------|--------|-------|
 | **Classification accuracy** | 3/3 tasks correctly classified (bug_fix, feature, refactor) | **A** |
-| **Context generation** | 123–129 lines per task, ~35 symbol references each | **A** |
-| **LLM response quality** | qwen3:8b reasoned from context, referenced real symbols | **B** |
-| **File identification** | 83% avg match (2/3 tasks at 100%) | **A** |
-| **Cross-session learning** | 6 patterns extracted, 100% success rate tracked | **A** |
-| **Pipeline latency** | 130s avg per task | **B** |
-| **Total cost** | $0.00 (free local model) | **A+** |
+| **Context generation** | 123–129 lines per task, ~35 real symbol references | **A** |
+| **LLM response quality** | qwen3:8b reasoned from context, produced 9K–11K char responses | **B** |
+| **File identification** | 83% avg match (2/3 at 100%, 1/3 at 50%) | **A** |
+| **Cross-session learning** | 6 patterns extracted from 3 sessions | **A** |
+| **Pipeline latency** | 130s avg per task (local 5.2 GB model) | **B** |
+| **Total cost** | $0.00 (free local model, no API keys) | **A+** |
 
 **Overall grade: 3.7/4.0 — Pipeline rated PRODUCTION-READY.**
 
@@ -37,7 +37,7 @@ The same 3 tasks were tested across **3 different local models** to validate con
 
 | Model | Size | File Match | Success | Tokens | Total Time | Avg Latency | Cost |
 |-------|------|-----------|---------|--------|-----------|------------|------|
-| **qwen3:8b** | 5.2 GB | **83%** | 100% | ~5,954 | 420s | 140s | $0.00 |
+| **qwen3:8b** | 5.2 GB local | **83%** | 100% | ~5,954 | 420s | 140s | $0.00 |
 | **qwen3-coder:480b-cloud** | Cloud | **83%** | 100% | ~1,653 | 221s | 74s | $0.00 |
 | **gpt-oss:120b-cloud** | Cloud | **83%** | 100% | ~6,239 | 94s | 31s | $0.00 |
 
@@ -58,11 +58,12 @@ Shadow Engineer doesn't just dump your codebase into a prompt. It provides **met
 ### Problem Classification
 - **Type**: bug_fix (confidence: 0.95)
 - **Recommended Approach**: Targeted Fix
-- **Expected Success Rate**: 100%
-- **Best Model**: claude-sonnet-4-6
+- **Expected Success Rate**: 80%*
+- **Best Model**: qwen3:8b
 
 ### Historical Insight
-- Based on 5 previous attempts, 'Targeted Fix' succeeds 100% of the time with claude-sonnet-4-6.
+- Based on 5 previous attempts, 'Targeted Fix' succeeds 80% of the time. Best result with qwen3:8b.
+*Efficacy rates from 18 ingested sessions — limited sample.
 
 ### Knowledge Graph Context
 #### Semantically Relevant Symbols
@@ -72,12 +73,14 @@ Shadow Engineer doesn't just dump your codebase into a prompt. It provides **met
 
 **Pipeline: Task → Classification → Strategy → Context → Prompt**
 
-| Problem Type | Best Approach | Success Rate | Best Model |
-|-------------|--------------|-------------|------------|
-| bug_fix | Targeted Fix | 100% (5/5) | claude-sonnet-4-6 |
-| feature | Extensible Implementation | 100% (3/3) | claude-sonnet-4-6 |
-| testing | TDD First | 100% (3/3) | qwen3:8b |
-| refactor | Incremental Rewrite | 100% (3/3) | qwen3:8b |
+| Problem Type | Best Approach | Success Rate* | Last Successful Model |
+|-------------|--------------|-------------|-----------------------|
+| bug_fix | Targeted Fix | 80% (4/5) | qwen3:8b |
+| feature | Extensible Implementation | 75% (3/4) | qwen3:8b |
+| testing | TDD First | 75% (3/4) | qwen3:8b |
+| refactor | Incremental Rewrite | 75% (3/4) | qwen3:8b |
+
+\* *Rates from 18 ingested sessions. Small sample — more sessions increase confidence.*
 
 > Build real efficacy data: `python scripts/build_efficacy_data.py`
 
@@ -115,10 +118,12 @@ Shadow Engineer is a **learning layer** that sits on top of any background codin
 ### The Compounding Moat
 
 ```
-Session 1:   No context  | No patterns  | No approach data  | 40% success rate (guess)
-Session 10:  10 symbols  | 3 patterns   | 2 approaches      | 55% success rate
-Session 50:  50 symbols  | 8 patterns   | 5 approaches      | 70% success rate
-Session 200: 100+ symbols | 20+ patterns | 10+ approaches   | 80%+ success rate
+Session 1:   No context  | No patterns  | No approach data  | ~40% success rate (baseline)
+Session 10:  10 symbols  | 3 patterns   | 2 approaches      | ~55% success rate*
+Session 50:  50 symbols  | 8 patterns   | 5 approaches      | ~70% success rate*
+Session 200: 100+ symbols | 20+ patterns | 10+ approaches   | ~80% success rate*
+
+*Projected from efficacy tracking logic. Measured: 78% over 18 sessions.
 ```
 
 **Every session makes the next one smarter.** This is the defensible moat that no competitor ships.
@@ -176,7 +181,7 @@ Current background coding agents treat every session independently:
 ### Three Engines
 
 #### 1. Knowledge Graph — "Remember"
-- **7 languages** indexed (Python, TypeScript, JavaScript, Go, Rust)
+- **5 languages** indexed (Python, TypeScript, JavaScript, Go, Rust — plus TSX/JSX dialect support)
 - **Semantic search** via ChromaDB vector embeddings
 - **Dependency mapping** — "If I change `UserService.authenticate()`, what breaks?"
 - **Impact analysis** — BFS up the dependency chain
@@ -216,7 +221,7 @@ pip install "shadow-engine[redis]"
 ### Option 2: From source
 
 ```bash
-git clone https://github.com/shadow-engine/shadow-engine.git
+git clone https://github.com/rudraneel93/shadow-engine.git
 cd shadow-engine
 pip install -e ".[dev]"
 ```
@@ -242,24 +247,23 @@ shadow-engine bootstrap
 
 Output:
 ```
-Bootstrapped: 347 symbols, 52 files indexed
+Bootstrapped: 423 symbols, 40 files indexed
 ```
 
 ### 2. Search for Symbols
 
 ```bash
-shadow-engine search "authenticate"
+shadow-engine search "authentication"
 ```
 
 Output:
 ```
-[function] authenticate_user — src/auth/service.py
-  Authenticates a user with email and password. Returns JWT token.
-[method] authenticate — src/auth/middleware.py
-  Middleware that checks the Authorization header for valid JWT.
+[class] TestAuthentication — tests/test_api_server.py
+[function] client_with_auth — tests/test_api_server.py
+[function] test_auth_passes_with_correct_key — tests/test_api_server.py
 ```
 
-### 3. Get AI-Ready Context
+### 3. Get AI-Ready Context (Meta-Reasoning)
 
 ```bash
 shadow-engine context "fix the login rate-limiting bug"
@@ -267,39 +271,39 @@ shadow-engine context "fix the login rate-limiting bug"
 
 Output (injects into agent prompts):
 ```
-## Codebase Knowledge Graph Context (Semantic)
+## Shadow Engineer — Context for ChatGPT
 
-### Semantically Relevant Symbols
+### Problem Classification
+- **Type**: bug_fix (confidence: 0.95)
+- **Recommended Approach**: Targeted Fix
+- **Expected Success Rate**: 80%
+- **Best Model**: qwen3:8b
 
-- **authenticate_user** (`function`) in `src/auth/service.py` (relevance: 0.89)
-  Authenticate a user from a JWT token.
-  Depends on: UserModel, TokenService
+### Historical Insight
+- Based on 5 previous attempts, 'Targeted Fix' succeeds 80% of the time.
 
-- **login_handler** (`function`) in `src/auth/views.py` (relevance: 0.82)
-  Handle login POST requests. Validates credentials and returns session token.
-  Complexity: 6.5
-
-### Learned Codebase Conventions
-- **error_handling**: Auth errors return 401 with JSON body {error: string, code: string}
-- **testing**: Agent writes tests alongside code changes.
-
-### Historically Effective Approaches
-- **Targeted Fix**: 85% success rate (17/20) — best model: claude-sonnet-4-6
+### Knowledge Graph Context
+#### Semantically Relevant Symbols
+- **verify_api_key** (`function`) in `api_server/server.py` (relevance: 0.72)
+  Verify the X-API-Key header matches the configured secret.
+- **RedisRateLimiter** (`class`) in `redis_limiter/__init__.py` (relevance: 0.68)
+  Production rate limiter backed by Redis.
+...
 ```
 
 ### 4. Analyze Change Impact
 
 ```bash
-shadow-engine impact "UserService"
+shadow-engine impact "ShadowEngine"
 ```
 
 Output:
 ```json
 {
-  "symbol": {"name": "UserService", "kind": "class", "file_path": "src/services/user.py"},
-  "dependencies": ["Database", "CacheClient", "EmailService"],
-  "direct_dependents": ["AuthController", "ProfileController", "AdminController"],
-  "total_affected_symbols": 18
+  "symbol": {"name": "ShadowEngine", "kind": "class", "file_path": "main.py"},
+  "dependencies": ["CodebaseIndexer", "ExperimentRunner", "LearningEngine"],
+  "direct_dependents": ["cli_main", "EngineRegistry"],
+  "total_affected_symbols": 12
 }
 ```
 
@@ -313,10 +317,10 @@ Output:
 ```json
 {
   "problem_type": "feature",
-  "classification_confidence": 0.85,
-  "recommended_approach": "Extensible Design",
-  "expected_success_rate": 0.78,
-  "best_model": "claude-sonnet-4-6"
+  "classification_confidence": 0.70,
+  "recommended_approach": "Extensible Implementation",
+  "expected_success_rate": 0.75,
+  "best_model": "qwen3:8b"
 }
 ```
 
@@ -334,7 +338,7 @@ shadow-engine record \
   --outcome "success" \
   --prompt "fix the login rate-limiting bug" \
   --approach "Targeted Fix" \
-  --model "claude-sonnet-4-6" \
+  --model "qwen3:8b" \
   --files "src/auth/service.py" "tests/auth/test_service.py" \
   --tests-passed 12 --tests-failed 0 \
   --duration 45.2 --tokens 8500
@@ -391,7 +395,7 @@ curl -X POST http://localhost:8000/sessions/ingest \
     "outcome": "success",
     "prompt": "fix the login bug",
     "approach": "Targeted Fix",
-    "model": "claude-sonnet-4-6",
+    "model": "qwen3:8b",
     "files_changed": ["src/auth.py", "tests/test_auth.py"],
     "tests_passed": 10,
     "tests_failed": 0,
@@ -480,37 +484,22 @@ class ShadowEngineClient:
 ### Usage Example
 
 ```python
-# Initialize
 client = ShadowEngineClient(base_url="http://localhost:8000", api_key="your-secret-key")
-
-# Bootstrap the codebase
 result = client.bootstrap()
 print(f"Indexed {result['symbols_indexed']} symbols")
 
-# Get context for an agent
 context = client.get_context("fix the login rate-limiting bug")
-
-# Get approach suggestion
 suggestion = client.suggest("fix the login rate-limiting bug")
 print(f"Recommended: {suggestion['recommended_approach']} ({suggestion['expected_success_rate']:.0%} expected)")
 
-# Record a completed session
 client.ingest_session(
-    session_id="sess-001",
-    outcome="success",
-    prompt="fix the login bug",
-    approach="Targeted Fix",
-    model="claude-sonnet-4-6",
+    session_id="sess-001", outcome="success", prompt="fix the login bug",
+    approach="Targeted Fix", model="qwen3:8b",
     files_changed=["src/auth.py", "tests/test_auth.py"],
-    tests_passed=10,
-    tests_failed=0,
-    duration_seconds=30.0,
-    token_count=5000,
+    tests_passed=10, tests_failed=0, duration_seconds=30.0, token_count=5000,
 )
 
-# After several sessions, view the improvement
 print(client.get_report())
-print(f"Overall success rate: {client.get_stats()['overall_success_rate']:.0%}")
 ```
 
 ---
@@ -522,38 +511,23 @@ Shadow Engineer provides an async bridge that plugs directly into Open-Inspect's
 ```python
 from shadow_engine.integrations.openinspect import OpenInspectBridge
 
-# Initialize
 bridge = OpenInspectBridge(repo_path="/path/to/your/repo")
 bridge.bootstrap_if_needed()
 
-# Before session spawn — enrich the prompt with knowledge graph context
-config = {
-    "prompt": "fix the login rate-limiting bug",
-    "repository": "my-repo",
-}
+config = {"prompt": "fix the login rate-limiting bug", "repository": "my-repo"}
 enriched = await bridge.enrich_session_config(config)
 # enriched["prompt"] now contains knowledge graph context
-# enriched["suggested_approach"] = "Targeted Fix"
-# enriched["suggested_model"] = "claude-sonnet-4-6"
-# enriched["problem_type"] = "bug_fix"
-# enriched["classification_confidence"] = 0.95
 
-# After session completes — ingest the result for learning
 result = {
-    "session_id": "sess-abc123",
-    "outcome": "completed",
-    "prompt": "fix the login rate-limiting bug",
-    "approach": "Targeted Fix",
-    "model": "claude-sonnet-4-6",
-    "pr_url": "https://github.com/myorg/myrepo/pull/142",
-    "files_changed": ["src/auth.py", "tests/test_auth.py"],
-    "tests_passed": 12,
-    "tests_failed": 0,
-    "duration_seconds": 45.2,
-    "token_count": 8500,
+    "session_id": "sess-abc123", "outcome": "completed",
+    "prompt": "fix the login rate-limiting bug", "approach": "Targeted Fix",
+    "model": "qwen3:8b", "files_changed": ["src/auth.py", "tests/test_auth.py"],
+    "tests_passed": 12, "tests_failed": 0, "duration_seconds": 45.2, "token_count": 8500,
 }
 ingestion = await bridge.ingest_session_result(result)
 ```
+
+> **Note:** The bridge code exists but hasn't been tested against a live Open-Inspect instance — contributions welcome.
 
 ---
 
@@ -562,10 +536,9 @@ ingestion = await bridge.ingest_session_result(result)
 ### Docker (Production)
 
 ```bash
-# With Redis for rate limiting
 docker compose -f docker/docker-compose.yml up -d
 
-# Without Redis (in-memory rate limiting)
+# Without Redis
 docker build -t shadow-engine -f docker/Dockerfile .
 docker run -p 8000:8000 \
   -e SHADOW_ENGINE_API_KEY=your-secret \
@@ -577,50 +550,11 @@ docker run -p 8000:8000 \
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SHADOW_ENGINE_API_KEY` | `""` (disabled) | API key for authentication. Set to enable |
+| `SHADOW_ENGINE_API_KEY` | `""` (disabled) | API key for authentication |
 | `SHADOW_ENGINE_REDIS_URL` | `redis://redis:6379` | Redis URL for rate limiting |
 | `SHADOW_ENGINE_RATE_LIMIT` | `100` | Max requests per window |
 | `SHADOW_ENGINE_RATE_WINDOW` | `60` | Rate limit window in seconds |
-| `SHADOW_ENGINE_STORAGE_PATH` | `/home/shadow/data` | Persistent storage directory |
-| `SHADOW_ENGINE_PORT` | `8000` | API server port |
-| `SHADOW_ENGINE_HOST` | `0.0.0.0` | API server host |
-
-### Production Checklist
-
-See **[FINDINGS_REPORT.md](FINDINGS_REPORT.md)** §6.2 for a detailed 12-point production readiness checklist.
-
----
-
-## Configuration Reference
-
-### Scoring Configuration
-
-Customize how experiment variants are scored:
-
-```python
-from shadow_engine.laboratory.experiment import ScoringConfig
-
-config = ScoringConfig(
-    test_pass_weight=0.50,      # Prioritize test passing
-    change_size_weight=0.15,    # Less emphasis on change size
-    speed_weight=0.20,          # More emphasis on speed
-    token_efficiency_weight=0.05,
-    file_scope_weight=0.10,
-)
-```
-
-### Model Configuration
-
-```python
-from shadow_engine.main import ShadowEngine
-
-engine = ShadowEngine(
-    storage_path="./.shadow-engine",
-    repo_path="./my-project",
-    use_sqlite=True,    # Production: SQLite WAL mode (default)
-    use_chroma=True,    # ChromaDB semantic search (default)
-)
-```
+| `SHADOW_ENGINE_ALLOWED_ROOTS` | `""` (all paths) | Comma-separated allowed repo paths |
 
 ---
 
@@ -640,35 +574,20 @@ engine = ShadowEngine(
 
 ```
 shadow-engine/
-├── README.md                        # You are here
-├── CHANGELOG.md                     # Version history
-├── API_DOCS.md                      # Full REST API reference (1,070 lines)
-├── FINDINGS_REPORT.md               # Research, efficiency, competitive analysis
-├── pyproject.toml                   # Package dependencies + entry points
+├── README.md, CHANGELOG.md, API_DOCS.md, FINDINGS_REPORT.md, ROADMAP.md
+├── pyproject.toml, LICENSE
 ├── docker/
-│   ├── Dockerfile                   # Production container
-│   └── docker-compose.yml           # Redis + app stack
-├── .github/workflows/ci.yml         # CI/CD pipeline
-├── scripts/real_demo.py             # End-to-end real LLM demo
+├── .github/workflows/ci.yml
+├── scripts/     (test_multimodel_e2e.py, test_ollama_e2e.py, build_efficacy_data.py, ...)
 ├── src/shadow_engine/
-│   ├── main.py                      # Orchestrator + CLI (11 commands)
-│   ├── knowledge_graph/
-│   │   ├── models.py                # 10 Pydantic data models
-│   │   ├── indexer.py               # 7-language AST parser
-│   │   └── store.py                 # JSON backend (legacy)
-│   ├── sqlite_store/db.py           # SQLite WAL backend (production default)
-│   ├── chroma_store/vector_store.py # ChromaDB semantic search
-│   ├── laboratory/experiment.py     # Experiment runner + scoring
-│   ├── learning/engine.py           # Pattern extraction + efficacy tracking
-│   ├── async_lab/executor.py        # Concurrent experiment execution
-│   ├── api_server/server.py         # FastAPI REST server
-│   ├── integrations/openinspect.py  # Open-Inspect async bridge
-│   └── redis_limiter/               # Redis rate limiter
-└── tests/
-    ├── test_knowledge_graph.py       # 33 tests
-    ├── test_laboratory.py            # 19 tests
-    ├── test_learning.py              # 12 tests
-    └── test_integration.py           # 16 tests
+│   ├── main.py, observability.py
+│   ├── knowledge_graph/ (indexer.py, models.py, store.py)
+│   ├── sqlite_store/db.py, chroma_store/vector_store.py
+│   ├── laboratory/experiment.py, learning/engine.py
+│   ├── llm/providers.py, async_lab/executor.py
+│   ├── api_server/server.py, integrations/openinspect.py
+│   └── redis_limiter/
+└── tests/ (7 test files, 155 tests)
 ```
 
 ---
@@ -676,19 +595,19 @@ shadow-engine/
 ## FAQ
 
 **Q: How is this different from Open-Inspect?**
-A: Open-Inspect is a background agent framework — it spawns sandboxes and runs coding sessions. Shadow Engineer is a **learning layer** that sits on top. It adds cross-session memory, parallel experimentation, and compounding intelligence that Open-Inspect (and every other agent framework) lacks.
+A: Open-Inspect is a background agent framework — it spawns sandboxes and runs coding sessions. Shadow Engineer is a **learning layer** that adds cross-session memory, parallel experimentation, and compounding intelligence.
 
 **Q: Can I use this without Open-Inspect?**
-A: Yes. Shadow Engineer works with any background agent via its REST API or CLI. The Open-Inspect bridge is an optional integration.
+A: Yes. Shadow Engineer works with any background agent via its REST API or CLI.
 
 **Q: Does it require a GPU?**
-A: No. ChromaDB uses CPU embeddings by default. GPU is only needed if you want to use a custom embedding model.
+A: No. ChromaDB uses CPU embeddings by default.
 
 **Q: What scale does this support?**
-A: SQLite WAL mode supports 100K+ sessions. For larger scale, the findings report recommends PostgreSQL as a future backend.
+A: SQLite WAL mode supports 100K+ sessions. PostgreSQL backend planned for larger scale.
 
 **Q: Is this ready for production?**
-A: See the [FINDINGS_REPORT.md](FINDINGS_REPORT.md) for a detailed assessment. Verdict: **A-** — production-grade for internal teams, beta-quality for public release.
+A: Production-ready for internal team deployment. See [ROADMAP.md](ROADMAP.md) for GA timeline.
 
 ---
 
