@@ -15,6 +15,8 @@ from .knowledge_graph.indexer import CodebaseIndexer
 from .knowledge_graph.store import KnowledgeGraphStore
 from .laboratory.experiment import ExperimentRunner
 from .learning.engine import LearningEngine
+from .learning.diff_patterns import DiffPatternExtractor
+from .learning.impact_predictor import ImpactPredictor
 from .observability import (
     log_bootstrap, record_bootstrap, record_search, record_session, record_context,
 )
@@ -63,6 +65,8 @@ class ShadowEngine:
         self.indexer = CodebaseIndexer(self.repo_path)
         self.laboratory = ExperimentRunner()
         self.learning = LearningEngine(self.store)
+        self.patterns = DiffPatternExtractor(self.store)
+        self.predictor = ImpactPredictor(self.store)
 
         # Fix #5: Metrics derived from DB (survives restarts)
         self._metrics: dict[str, Any] = {
@@ -152,6 +156,32 @@ class ShadowEngine:
         parts.append("### Historical Insight")
         parts.append(f"- {evidence}")
         parts.append("")
+
+        # Breakthrough #1: Proven fix patterns from historical data
+        try:
+            pattern_context = self.patterns.build_pattern_context(
+                suggestion['problem_type'], task_description)
+            if pattern_context:
+                parts.append(pattern_context)
+        except Exception:
+            pass  # Graceful degradation if pattern extraction fails
+
+        # Breakthrough #2: Predictive risk assessment
+        semantic_files: list[str] = []
+        if self._chroma is not None and self._chroma.count() > 0:
+            try:
+                semantic_results = self._chroma.search(task_description, top_k=5)
+                if semantic_results:
+                    semantic_files = [s.file_path for s, _ in semantic_results[:5]]
+            except Exception:
+                pass
+        if semantic_files and hasattr(self.store, 'predict_impact'):
+            try:
+                risk_context = self.predictor.build_risk_context(semantic_files)
+                if risk_context:
+                    parts.append(risk_context)
+            except Exception:
+                pass  # Graceful degradation
 
         if self._chroma is not None and self._chroma.count() > 0:
             try:
@@ -257,7 +287,24 @@ class ShadowEngine:
             files_changed=files_changed or [], test_results=test_results or {},
             review_comments=review_comments or [],
             duration_seconds=duration_seconds, token_count=token_count)
-        return self.learning.ingest_session(session)
+        ingestion = self.learning.ingest_session(session)
+
+        # Breakthrough #1: Extract fix patterns from successful sessions
+        try:
+            self.patterns.extract_patterns_from_session(
+                session_id=session_id,
+                prompt=prompt,
+                problem_type=ingestion.get("problem_type", "general"),
+                approach=approach,
+                files_changed=files_changed or [],
+                test_results=test_results or {},
+                was_successful=session.was_successful,
+            )
+            self.patterns.invalidate_cache()
+            self.predictor.invalidate_cache()
+        except Exception:
+            pass
+        return ingestion
 
     def get_report(self) -> str:
         return self.learning.get_improvement_report()

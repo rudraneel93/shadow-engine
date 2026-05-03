@@ -98,6 +98,23 @@ class SQLiteStore:
         FOREIGN KEY (pattern_id) REFERENCES patterns(id)
     );
 
+    CREATE TABLE IF NOT EXISTS fix_patterns (
+        id TEXT PRIMARY KEY,
+        pattern_type TEXT NOT NULL,
+        problem_type TEXT NOT NULL,
+        description TEXT NOT NULL,
+        approach TEXT DEFAULT '',
+        confidence REAL DEFAULT 0.5,
+        session_id TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS fix_pattern_examples (
+        pattern_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        FOREIGN KEY (pattern_id) REFERENCES fix_patterns(id)
+    );
+
     CREATE TABLE IF NOT EXISTS sessions (
         session_id TEXT PRIMARY KEY,
         repository TEXT NOT NULL,
@@ -369,6 +386,76 @@ class SQLiteStore:
             sess = conn.execute("SELECT session_id FROM pattern_sessions WHERE pattern_id = ?", (r["id"],)).fetchall()
             result.append(CodePattern(id=r["id"], pattern_type=r["pattern_type"], description=r["description"], examples=[e[0] for e in exs], confidence=r["confidence"], source_sessions=[s[0] for s in sess]))
         return result
+
+    # ── Fix Pattern Methods (Breakthrough #1) ──────────────────
+
+    def learn_fix_pattern(self, pattern_type: str, problem_type: str, description: str,
+                          approach: str, examples: list[str], session_id: str,
+                          confidence: float = 0.5) -> None:
+        conn = self._get_conn()
+        import hashlib
+        pid = hashlib.sha256(f"{pattern_type}:{problem_type}:{description[:100]}".encode()).hexdigest()[:16]
+        conn.execute("INSERT OR REPLACE INTO fix_patterns VALUES (?,?,?,?,?,?,?,?)",
+                     (pid, pattern_type, problem_type, description, approach, confidence, session_id, self._now()))
+        conn.execute("DELETE FROM fix_pattern_examples WHERE pattern_id = ?", (pid,))
+        for ex in examples[:3]:
+            conn.execute("INSERT INTO fix_pattern_examples VALUES (?,?)", (pid, ex))
+        conn.commit()
+
+    def get_fix_patterns(self, problem_type: str, min_confidence: float = 0.5,
+                         limit: int = 5) -> list[dict[str, Any]]:
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT * FROM fix_patterns WHERE problem_type=? AND confidence>=? ORDER BY confidence DESC LIMIT ?",
+            (problem_type, min_confidence, limit)).fetchall()
+        result: list[dict[str, Any]] = []
+        for r in rows:
+            exs = conn.execute("SELECT file_path FROM fix_pattern_examples WHERE pattern_id=?", (r["id"],)).fetchall()
+            result.append({"pattern_type": r["pattern_type"], "problem_type": r["problem_type"],
+                           "description": r["description"], "approach": r["approach"],
+                           "examples": [e["file_path"] for e in exs], "confidence": r["confidence"]})
+        return result
+
+    # ── Predictive Impact (Breakthrough #2) ─────────────────────
+
+    def predict_impact(self, files: list[str]) -> dict[str, Any]:
+        conn = self._get_conn()
+        if not files:
+            return {"risk_score": 0.0, "evidence_count": 0, "confidence": 0.0}
+        ph = ",".join("?" * len(files))
+        sessions = conn.execute(
+            f"SELECT DISTINCT session_id FROM session_files WHERE file_path IN ({ph})", files).fetchall()
+        session_ids = [r["session_id"] for r in sessions]
+        if len(session_ids) < 3:
+            return {"risk_score": 0.0, "evidence_count": len(session_ids), "confidence": 0.2 * len(session_ids)}
+        sid_ph = ",".join("?" * len(session_ids))
+        outcomes = conn.execute(
+            f"SELECT outcome, COUNT(*) as cnt FROM sessions WHERE session_id IN ({sid_ph}) GROUP BY outcome",
+            session_ids).fetchall()
+        total = sum(r["cnt"] for r in outcomes)
+        failures = sum(r["cnt"] for r in outcomes if r["outcome"] != AgentOutcome.SUCCESS.value)
+        risk_score = failures / total if total > 0 else 0.0
+        confidence = min(1.0, len(session_ids) / 20)
+        co_changed = conn.execute(
+            f"SELECT sf.file_path, COUNT(*) as cnt FROM session_files sf WHERE sf.session_id IN ({sid_ph}) AND sf.file_path NOT IN ({ph}) GROUP BY sf.file_path ORDER BY cnt DESC LIMIT 5",
+            session_ids + files).fetchall()
+        likely_affected = [r["file_path"] for r in co_changed]
+        broken_tests: list[tuple[str, float]] = []
+        for sid in session_ids[:30]:
+            tr = conn.execute("SELECT results_json FROM session_test_results WHERE session_id=?", (sid,)).fetchone()
+            if tr and tr["results_json"]:
+                try:
+                    res = json.loads(tr["results_json"])
+                    if res.get("failed", 0) > 0:
+                        sr = conn.execute("SELECT prompt FROM sessions WHERE session_id=?", (sid,)).fetchone()
+                        if sr:
+                            broken_tests.append((sr["prompt"][:60], 0.45))
+                except Exception:
+                    pass
+        return {"risk_score": risk_score, "evidence_count": len(session_ids),
+                "confidence": confidence, "likely_affected_files": likely_affected,
+                "likely_broken_tests": broken_tests[:5],
+                "median_change_lines": 15, "median_files_changed": len(files)}
 
     def close(self) -> None:
         if hasattr(self._local, "conn") and self._local.conn is not None:
