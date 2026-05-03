@@ -245,8 +245,7 @@ class PROutcomeSimulator:
             return []
 
         rows = conn.execute(
-            "SELECT session_id, outcome, approach, files_changed_json, "
-            "test_results_json, review_comments_json "
+            "SELECT session_id, outcome, approach, duration_seconds, token_count "
             "FROM sessions WHERE outcome != 'in_progress' "
             "ORDER BY created_at DESC LIMIT ?",
             (limit,),
@@ -255,28 +254,41 @@ class PROutcomeSimulator:
         sessions: list[dict[str, Any]] = []
         for row in rows:
             session = dict(row)
-            try:
-                import json
-                session["files_changed"] = json.loads(session.get("files_changed_json", "[]"))
-                session["test_results"] = json.loads(session.get("test_results_json", "{}"))
-                session["review_comments"] = json.loads(session.get("review_comments_json", "[]"))
-            except Exception:
-                session["files_changed"] = []
-                session["test_results"] = {}
-                session["review_comments"] = []
             session["was_successful"] = session.get("outcome") == "success"
+            session["files_changed"] = []
+            session["test_results"] = {}
+            session["review_comments"] = []
             sessions.append(session)
 
-        # Also get session_files
+        # Get files, test results, review comments from related tables
         for s in sessions:
+            sid = s["session_id"]
+
+            # session_files
             files_rows = conn.execute(
                 "SELECT file_path FROM session_files WHERE session_id=?",
-                (s["session_id"],),
+                (sid,),
             ).fetchall()
-            if files_rows:
-                s["files_changed"] = list(set(
-                    s.get("files_changed", []) + [f["file_path"] for f in files_rows]
-                ))
+            s["files_changed"] = [f["file_path"] for f in files_rows]
+
+            # session_test_results
+            tr = conn.execute(
+                "SELECT results_json FROM session_test_results WHERE session_id=?",
+                (sid,),
+            ).fetchone()
+            if tr and tr["results_json"]:
+                try:
+                    import json
+                    s["test_results"] = json.loads(tr["results_json"])
+                except Exception:
+                    pass
+
+            # session_review_comments
+            rc = conn.execute(
+                "SELECT comment FROM session_review_comments WHERE session_id=?",
+                (sid,),
+            ).fetchall()
+            s["review_comments"] = [r["comment"] for r in rc]
 
         return sessions
 
