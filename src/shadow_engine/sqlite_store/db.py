@@ -506,9 +506,11 @@ class SQLiteStore:
         return result
 
     def close(self) -> None:
-        """Close all thread-local connections. Call on shutdown."""
+        """Close all thread-local connections. Runs WAL checkpoint to prevent
+        unbounded WAL file growth."""
         if hasattr(self._local, "conn") and self._local.conn is not None:
             try:
+                self._local.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
                 self._local.conn.close()
             except Exception:
                 pass

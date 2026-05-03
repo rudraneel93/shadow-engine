@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import os
+import secrets
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -56,7 +57,7 @@ _rate_limiter = RedisRateLimiter(
 )
 
 
-# ── Auth ──────────────────────────────────────────────────────────
+# ── Auth (Fix: constant-time API key comparison) ─────────────────
 
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
 _configured_api_key = os.environ.get("SHADOW_ENGINE_API_KEY") or None
@@ -64,7 +65,7 @@ _configured_api_key = os.environ.get("SHADOW_ENGINE_API_KEY") or None
 
 async def verify_api_key(api_key: str | None = Security(API_KEY_HEADER)) -> None:
     if _configured_api_key is not None:
-        if api_key is None or api_key != _configured_api_key:
+        if api_key is None or not secrets.compare_digest(api_key, _configured_api_key):
             raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 

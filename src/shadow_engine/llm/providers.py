@@ -18,8 +18,11 @@ from __future__ import annotations
 import os
 import subprocess
 import time
+import logging
 from dataclasses import dataclass
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -42,7 +45,7 @@ class LLMResponse:
 class LLMProvider:
     """Base class for LLM providers."""
 
-    def generate(self, prompt: str, system_prompt: str | None = None, max_tokens: int = 2048) -> LLMResponse:
+    def generate(self, prompt: str, system_prompt: str | None = None, max_tokens: int = 2048, retries: int = 3) -> LLMResponse:
         raise NotImplementedError
 
 
@@ -56,60 +59,51 @@ class OllamaProvider(LLMProvider):
         self.model = model
         self.base_url = base_url or "http://localhost:11434"
 
-    def generate(self, prompt: str, system_prompt: str | None = None, max_tokens: int = 2048) -> LLMResponse:
+    def generate(self, prompt: str, system_prompt: str | None = None, max_tokens: int = 2048, retries: int = 3) -> LLMResponse:
         start = time.time()
-        try:
-            full_prompt = prompt
-            if system_prompt:
-                full_prompt = f"{system_prompt}\n\n{prompt}"
+        last_error = None
 
-            result = subprocess.run(
-                ["ollama", "run", self.model, full_prompt],
-                capture_output=True,
-                text=True,
-                timeout=180,
-            )
-            duration = time.time() - start
+        for attempt in range(retries):
+            try:
+                full_prompt = prompt
+                if system_prompt:
+                    full_prompt = f"{system_prompt}\n\n{prompt}"
 
-            if result.returncode != 0:
-                return LLMResponse(
-                    content="",
-                    model=self.model,
-                    provider="ollama",
-                    duration_seconds=duration,
-                    error=result.stderr.strip() or "Unknown Ollama error",
+                result = subprocess.run(
+                    ["ollama", "run", self.model, full_prompt],
+                    capture_output=True,
+                    text=True,
+                    timeout=180,
                 )
+                duration = time.time() - start
 
-            content = result.stdout.strip()
-            words = len(content.split())
-            estimated_tokens = int(words * 1.3)
+                if result.returncode != 0:
+                    last_error = result.stderr.strip() or "Unknown Ollama error"
+                    if attempt < retries - 1:
+                        time.sleep(2 ** attempt)  # Exponential backoff
+                        continue
+                    return LLMResponse(content="", model=self.model, provider="ollama",
+                                       duration_seconds=duration, error=last_error)
 
-            return LLMResponse(
-                content=content,
-                model=self.model,
-                provider="ollama",
-                duration_seconds=duration,
-                input_tokens=estimated_tokens // 2,
-                output_tokens=estimated_tokens,
-                total_tokens=estimated_tokens,
-            )
+                content = result.stdout.strip()
+                words = len(content.split())
+                estimated_tokens = int(words * 1.3)
 
-        except subprocess.TimeoutExpired:
-            return LLMResponse(
-                content="",
-                model=self.model,
-                provider="ollama",
-                duration_seconds=time.time() - start,
-                error="LLM call timed out after 180s",
-            )
-        except FileNotFoundError:
-            return LLMResponse(
-                content="",
-                model=self.model,
-                provider="ollama",
-                duration_seconds=time.time() - start,
-                error="Ollama not found. Install: brew install ollama && ollama pull qwen3:8b",
-            )
+                return LLMResponse(content=content, model=self.model, provider="ollama",
+                                   duration_seconds=duration, input_tokens=estimated_tokens // 2,
+                                   output_tokens=estimated_tokens, total_tokens=estimated_tokens)
+
+            except subprocess.TimeoutExpired:
+                last_error = "LLM call timed out after 180s"
+                if attempt < retries - 1:
+                    continue
+            except FileNotFoundError:
+                return LLMResponse(content="", model=self.model, provider="ollama",
+                                   duration_seconds=time.time() - start,
+                                   error="Ollama not found. Install: brew install ollama && ollama pull qwen3:8b")
+
+        return LLMResponse(content="", model=self.model, provider="ollama",
+                          duration_seconds=time.time() - start, error=last_error or "All retries failed")
 
 
 class OpenAIProvider(LLMProvider):
@@ -120,62 +114,50 @@ class OpenAIProvider(LLMProvider):
         self.model = model
         self.base_url = base_url or "https://api.openai.com/v1"
 
-    def generate(self, prompt: str, system_prompt: str | None = None, max_tokens: int = 2048) -> LLMResponse:
+    def generate(self, prompt: str, system_prompt: str | None = None, max_tokens: int = 2048, retries: int = 3) -> LLMResponse:
         start = time.time()
-        try:
-            import httpx
+        import httpx
 
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        last_error = None
 
-            response = httpx.post(
-                f"{self.base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": self.model,
-                    "messages": messages,
-                    "max_tokens": max_tokens,
-                },
-                timeout=120,
-            )
-            data = response.json()
-            duration = time.time() - start
-
-            if response.status_code != 200:
-                return LLMResponse(
-                    content="",
-                    model=self.model,
-                    provider="openai",
-                    duration_seconds=duration,
-                    error=data.get("error", {}).get("message", str(data)),
+        for attempt in range(retries):
+            try:
+                response = httpx.post(
+                    f"{self.base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                    json={"model": self.model, "messages": messages, "max_tokens": max_tokens},
+                    timeout=120,
                 )
+                data = response.json()
+                duration = time.time() - start
 
-            usage = data.get("usage", {})
-            content = data["choices"][0]["message"]["content"] if data.get("choices") else ""
+                if response.status_code != 200:
+                    last_error = data.get("error", {}).get("message", str(data))
+                    if attempt < retries - 1:
+                        time.sleep(2 ** attempt)
+                        continue
+                    return LLMResponse(content="", model=self.model, provider="openai",
+                                       duration_seconds=duration, error=last_error)
 
-            return LLMResponse(
-                content=content,
-                model=self.model,
-                provider="openai",
-                duration_seconds=duration,
-                input_tokens=usage.get("prompt_tokens", 0),
-                output_tokens=usage.get("completion_tokens", 0),
-                total_tokens=usage.get("total_tokens", 0),
-            )
+                usage = data.get("usage", {})
+                content = data["choices"][0]["message"]["content"] if data.get("choices") else ""
+                return LLMResponse(content=content, model=self.model, provider="openai",
+                                   duration_seconds=duration, input_tokens=usage.get("prompt_tokens", 0),
+                                   output_tokens=usage.get("completion_tokens", 0),
+                                   total_tokens=usage.get("total_tokens", 0))
 
-        except Exception as e:
-            return LLMResponse(
-                content="",
-                model=self.model,
-                provider="openai",
-                duration_seconds=time.time() - start,
-                error=str(e),
-            )
+            except Exception as e:
+                last_error = str(e)
+                if attempt < retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+
+        return LLMResponse(content="", model=self.model, provider="openai",
+                          duration_seconds=time.time() - start, error=last_error or "All retries failed")
 
 
 class AnthropicProvider(LLMProvider):
@@ -185,65 +167,52 @@ class AnthropicProvider(LLMProvider):
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
         self.model = model
 
-    def generate(self, prompt: str, system_prompt: str | None = None, max_tokens: int = 2048) -> LLMResponse:
+    def generate(self, prompt: str, system_prompt: str | None = None, max_tokens: int = 2048, retries: int = 3) -> LLMResponse:
         start = time.time()
-        try:
-            import httpx
+        import httpx
 
-            payload: dict[str, Any] = {
-                "model": self.model,
-                "max_tokens": max_tokens,
-                "messages": [{"role": "user", "content": prompt}],
-            }
-            if system_prompt:
-                payload["system"] = system_prompt
+        payload: dict[str, Any] = {"model": self.model, "max_tokens": max_tokens, "messages": [{"role": "user", "content": prompt}]}
+        if system_prompt:
+            payload["system"] = system_prompt
+        last_error = None
 
-            response = httpx.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json=payload,
-                timeout=120,
-            )
-            data = response.json()
-            duration = time.time() - start
-
-            if response.status_code != 200:
-                return LLMResponse(
-                    content="",
-                    model=self.model,
-                    provider="anthropic",
-                    duration_seconds=duration,
-                    error=data.get("error", {}).get("message", str(data)),
+        for attempt in range(retries):
+            try:
+                response = httpx.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={"x-api-key": self.api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                    json=payload,
+                    timeout=120,
                 )
+                data = response.json()
+                duration = time.time() - start
 
-            content = ""
-            for block in data.get("content", []):
-                if block["type"] == "text":
-                    content += block["text"]
+                if response.status_code != 200:
+                    last_error = data.get("error", {}).get("message", str(data))
+                    if attempt < retries - 1:
+                        time.sleep(2 ** attempt)
+                        continue
+                    return LLMResponse(content="", model=self.model, provider="anthropic",
+                                       duration_seconds=duration, error=last_error)
 
-            usage = data.get("usage", {})
-            return LLMResponse(
-                content=content,
-                model=self.model,
-                provider="anthropic",
-                duration_seconds=duration,
-                input_tokens=usage.get("input_tokens", 0),
-                output_tokens=usage.get("output_tokens", 0),
-                total_tokens=usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
-            )
+                content = ""
+                for block in data.get("content", []):
+                    if block["type"] == "text":
+                        content += block["text"]
+                usage = data.get("usage", {})
+                return LLMResponse(content=content, model=self.model, provider="anthropic",
+                                   duration_seconds=duration, input_tokens=usage.get("input_tokens", 0),
+                                   output_tokens=usage.get("output_tokens", 0),
+                                   total_tokens=usage.get("input_tokens", 0) + usage.get("output_tokens", 0))
 
-        except Exception as e:
-            return LLMResponse(
-                content="",
-                model=self.model,
-                provider="anthropic",
-                duration_seconds=time.time() - start,
-                error=str(e),
-            )
+            except Exception as e:
+                last_error = str(e)
+                if attempt < retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+
+        return LLMResponse(content="", model=self.model, provider="anthropic",
+                          duration_seconds=time.time() - start, error=last_error or "All retries failed")
 
 
 def get_provider(
