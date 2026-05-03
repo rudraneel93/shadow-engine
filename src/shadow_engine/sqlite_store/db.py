@@ -185,10 +185,11 @@ class SQLiteStore:
         )
         conn.execute("DELETE FROM symbol_deps WHERE symbol_id = ?", (symbol.id,))
         for dep_id in symbol.dependencies:
-            conn.execute(
-                "INSERT OR IGNORE INTO symbol_deps VALUES (?, ?)",
-                (symbol.id, dep_id),
-            )
+            try:
+                conn.execute("INSERT INTO symbol_deps VALUES (?, ?)", (symbol.id, dep_id))
+            except sqlite3.IntegrityError:
+                # Dependency symbol may not be inserted yet — will resolve on reindex
+                pass
         conn.commit()
 
     # Fix #1: Add upsert_file() method
