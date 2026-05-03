@@ -17,6 +17,7 @@ from .laboratory.experiment import ExperimentRunner
 from .learning.engine import LearningEngine
 from .learning.diff_patterns import DiffPatternExtractor
 from .learning.impact_predictor import ImpactPredictor
+from .learning.bayesian_predictor import BayesianPredictor
 from .observability import (
     log_bootstrap, record_bootstrap, record_search, record_session, record_context,
 )
@@ -67,6 +68,7 @@ class ShadowEngine:
         self.learning = LearningEngine(self.store)
         self.patterns = DiffPatternExtractor(self.store)
         self.predictor = ImpactPredictor(self.store)
+        self.bayesian = BayesianPredictor(self.store)
 
         # Fix #5: Metrics derived from DB (survives restarts)
         self._metrics: dict[str, Any] = {
@@ -166,7 +168,7 @@ class ShadowEngine:
         except Exception:
             pass  # Graceful degradation if pattern extraction fails
 
-        # Breakthrough #2: Predictive risk assessment
+        # Breakthrough #2: Predictive risk assessment (Bayesian)
         semantic_files: list[str] = []
         if self._chroma is not None and self._chroma.count() > 0:
             try:
@@ -175,9 +177,9 @@ class ShadowEngine:
                     semantic_files = [s.file_path for s, _ in semantic_results[:5]]
             except Exception:
                 pass
-        if semantic_files and hasattr(self.store, 'predict_impact'):
+        if semantic_files:
             try:
-                risk_context = self.predictor.build_risk_context(semantic_files)
+                risk_context = self.bayesian.build_context_bayesian(semantic_files)
                 if risk_context:
                     parts.append(risk_context)
             except Exception:
