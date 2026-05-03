@@ -22,6 +22,8 @@ from .learning.test_tracker import TestTracker
 from .learning.pattern_merger import PatternMerger
 from .learning.code_diff_analyzer import CodeDiffAnalyzer
 from .learning.live_monitor import LiveMonitor
+from .learning.codebase_qa import CodebaseQA
+from .learning.hot_zones import HotZoneDetector
 from .observability import (
     log_bootstrap, record_bootstrap, record_search, record_session, record_context,
 )
@@ -77,6 +79,8 @@ class ShadowEngine:
         self.merger = PatternMerger(self.store)
         self.diff_analyzer = CodeDiffAnalyzer(self.store, self.repo_path)
         self.live_monitor = LiveMonitor(self.store)
+        self.qa = CodebaseQA(self.store, self._chroma)
+        self.hot_zones = HotZoneDetector(self.store, self._chroma)
 
         # Fix #5: Metrics derived from DB (survives restarts)
         self._metrics: dict[str, Any] = {

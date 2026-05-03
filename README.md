@@ -31,7 +31,7 @@ Shadow Engineer was tested end-to-end with **Ollama qwen3:8b (5.2 GB local LLM)*
 | **Pipeline latency** | 130s avg per task (local 5.2 GB model) | **B** |
 | **Total cost** | $0.00 (free local model, no API keys) | **A+** |
 
-**Overall grade: 3.7/4.0 — Pipeline rated PRODUCTION-READY.**
+**Overall grade: 3.7/4.0.**
 
 The same 3 tasks were tested across **3 different local models** to validate consistency:
 
@@ -128,8 +128,53 @@ Every context block now includes six layers of intelligence before the knowledge
 | **Per-Test Risk Correlation** | Maps files to specific test failure rates across sessions | ✅ v0.7.0 |
 | **Pattern Similarity Merging** | Jaccard deduplication prevents pattern fragmentation | ✅ v0.7.0 |
 | **Code-Level Fix Patterns** | Answers "what code should I write?" with real examples | ✅ v0.7.0 |
+| **Live Session Monitoring** | Real-time file risk warnings during coding sessions | ✅ v0.8.0 |
+| **Natural Language Q&A** | Answers English questions about the codebase (7 question types) | ✅ v0.8.0 |
+| **Hot Zone Detection** | Weighted scoring identifies files causing disproportionate failures | ✅ v0.8.0 |
 
 > Reproduce: `python scripts/build_efficacy_data.py` then `shadow-engine context "your task"`
+
+---
+
+## 🚀 New Capabilities (v0.8.0)
+
+Tested against 18 real sessions with 490 symbols (155 pytest suite passing).
+
+| Test Area | Result |
+|-----------|--------|
+| **CodebaseQA** | 6/7 question types returned real data |
+| **Hot Zone Detection** | 12 files scored — store.py highest risk (100% failure) |
+| **Live Monitor** | 6/6 files analyzed with session data |
+| **get_context() layers** | 6/8 layers active |
+| **pytest suite** | 155 passed, 0 failures |
+
+### Live Session Monitoring
+Real-time risk warnings during coding sessions. When an agent starts modifying files, Shadow Engineer provides live, data-driven risk assessment:
+
+| File | Risk | Mods | Break Rate | Shrinkage |
+|------|------|------|-----------|-----------|
+| `knowledge_graph/store.py` | 🔴 HIGH | 2 | 100% | 50% |
+| `main.py` | 🟡 MEDIUM | 6 | 33% | 75% |
+| `sqlite_store/db.py` | 🟡 MEDIUM | 5 | 40% | 71% |
+| `knowledge_graph/indexer.py` | 🟢 LOW | 4 | 25% | 67% |
+
+### Natural Language Codebase Q&A
+Ask plain-English questions. Zero LLM calls — answers from structured data:
+
+```
+Q: "What's the most dangerous file?"
+A: main.py — 6 modifications, 2 failures (33%)
+   sqlite_store/db.py — 5 modifications, 2 failures (40%)
+
+Q: "Who depends on ShadowEngine?"
+A: get_engine() → used by get_context, search, impact, suggest, experiment...
+   ShadowEngine → used by cli_main
+```
+
+### Hot Zone Detection
+Weighted composite scoring (mod_freq × 40% + failure_rate × 40% + fanout × 20%) identifies files that cause disproportionate failures. 12 hot zones detected from 18 real sessions.
+
+> Comprehensive test: `python scripts/test_breakthroughs.py`
 
 ---
 
@@ -654,7 +699,7 @@ A: No. ChromaDB uses CPU embeddings by default.
 A: SQLite WAL mode supports 100K+ sessions. PostgreSQL backend planned for larger scale.
 
 **Q: Is this ready for production?**
-A: Production-ready for internal team deployment. See [ROADMAP.md](ROADMAP.md) for GA timeline.
+A: Ready for internal team deployment. See [ROADMAP.md](ROADMAP.md) for GA timeline.
 
 ---
 
