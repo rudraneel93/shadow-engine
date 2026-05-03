@@ -18,6 +18,7 @@ from .learning.engine import LearningEngine
 from .learning.diff_patterns import DiffPatternExtractor
 from .learning.impact_predictor import ImpactPredictor
 from .learning.bayesian_predictor import BayesianPredictor
+from .learning.test_tracker import TestTracker
 from .observability import (
     log_bootstrap, record_bootstrap, record_search, record_session, record_context,
 )
@@ -69,6 +70,7 @@ class ShadowEngine:
         self.patterns = DiffPatternExtractor(self.store)
         self.predictor = ImpactPredictor(self.store)
         self.bayesian = BayesianPredictor(self.store)
+        self.test_tracker = TestTracker(self.store)
 
         # Fix #5: Metrics derived from DB (survives restarts)
         self._metrics: dict[str, Any] = {
@@ -168,7 +170,7 @@ class ShadowEngine:
         except Exception:
             pass  # Graceful degradation if pattern extraction fails
 
-        # Breakthrough #2: Predictive risk assessment (Bayesian)
+        # Gather relevant files from semantic search (for risk + test analysis)
         semantic_files: list[str] = []
         if self._chroma is not None and self._chroma.count() > 0:
             try:
@@ -177,6 +179,17 @@ class ShadowEngine:
                     semantic_files = [s.file_path for s, _ in semantic_results[:5]]
             except Exception:
                 pass
+
+        # Deep Feature #2: Per-test risk correlation
+        if semantic_files:
+            try:
+                test_risk = self.test_tracker.build_test_risk_context(semantic_files)
+                if test_risk:
+                    parts.append(test_risk)
+            except Exception:
+                pass
+
+        # Deep Feature #2: Predictive risk assessment (Bayesian)
         if semantic_files:
             try:
                 risk_context = self.bayesian.build_context_bayesian(semantic_files)
