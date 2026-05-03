@@ -8,6 +8,8 @@ from collections.abc import Generator
 from datetime import datetime, timezone
 from pathlib import Path
 
+from typing import Any
+
 from .models import FileSummary, Symbol, SymbolKind
 
 
@@ -143,46 +145,102 @@ class CodebaseIndexer:
             self._files[relative] = file_summary
             return file_summary
 
-        for line_num, line in enumerate(lines, start=1):
-            for pattern, kind in patterns:
-                m = pattern.match(line)
-                if m:
-                    name = m.group(1)
-                    if not name:
-                        continue
-                    signature = line.strip()
-                    docstring = self._extract_docstring(lines, line_num - 1, language)
+        # Phase 3: Use AST for Python docstring extraction (replaces heuristic regex)
+        ast_symbols: list[dict[str, Any]] = []
+        if language == ".py":
+            try:
+                import ast
+                tree = ast.parse(content)
+                for node in ast.walk(tree):
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                        docstring = ast.get_docstring(node) or ""
+                        sig_start = lines[node.lineno - 1] if node.lineno - 1 < len(lines) else ""
+                        ast_symbols.append({
+                            "name": node.name,
+                            "kind": SymbolKind.CLASS if isinstance(node, ast.ClassDef) else SymbolKind.FUNCTION,
+                            "line_start": node.lineno,
+                            "line_end": node.end_lineno or node.lineno,
+                            "signature": sig_start.strip(),
+                            "docstring": docstring,
+                        })
+            except SyntaxError:
+                # Fall back to regex parsing for files with syntax errors
+                pass
 
-                    symbol = Symbol(
-                        id=Symbol.compute_id(relative, name),
-                        name=name, kind=kind, file_path=relative,
-                        line_start=line_num,
-                        line_end=self._find_symbol_end(lines, line_num - 1, language),
-                        signature=signature, docstring=docstring,
-                    )
-                    self._symbols[symbol.id] = symbol
-                    file_summary.symbols.append(symbol.id)
+        if ast_symbols:
+            for sym_data in ast_symbols:
+                symbol = Symbol(
+                    id=Symbol.compute_id(relative, sym_data["name"]),
+                    name=sym_data["name"], kind=sym_data["kind"], file_path=relative,
+                    line_start=sym_data["line_start"], line_end=sym_data["line_end"],
+                    signature=sym_data["signature"], docstring=sym_data["docstring"],
+                )
+                self._symbols[symbol.id] = symbol
+                file_summary.symbols.append(symbol.id)
 
-                    im = _IMPORT_RE.match(line)
-                    if im:
-                        from_module = im.group(1)
-                        import_targets = im.group(2)
-                        import_module = im.group(3)
-                        if from_module and import_targets:
-                            targets = import_targets.strip()
-                            if targets == "*":
-                                file_summary.imports.append(f"*:{from_module}")
-                            else:
-                                for target in targets.split(","):
-                                    target = target.strip()
-                                    if " as " in target:
-                                        target = target.split(" as ")[0].strip()
-                                    file_summary.imports.append(target)
-                        elif import_module:
-                            file_summary.imports.append(import_module.strip())
-                        elif from_module:
-                            file_summary.imports.append(from_module.strip())
-                    break
+                # Extract imports from the first line
+                line = sym_data["signature"] if sym_data["line_start"] - 1 < len(lines) else ""
+                im = _IMPORT_RE.match(line) if line else None
+                if im:
+                    from_module = im.group(1)
+                    import_targets = im.group(2)
+                    import_module = im.group(3)
+                    if from_module and import_targets:
+                        targets = import_targets.strip()
+                        if targets == "*":
+                            file_summary.imports.append(f"*:{from_module}")
+                        else:
+                            for target in targets.split(","):
+                                target = target.strip()
+                                if " as " in target:
+                                    target = target.split(" as ")[0].strip()
+                                file_summary.imports.append(target)
+                    elif import_module:
+                        file_summary.imports.append(import_module.strip())
+                    elif from_module:
+                        file_summary.imports.append(from_module.strip())
+        else:
+            # Fallback: regex-based indexing for non-Python files or files with syntax errors
+            for line_num, line in enumerate(lines, start=1):
+                for pattern, kind in patterns:
+                    m = pattern.match(line)
+                    if m:
+                        name = m.group(1)
+                        if not name:
+                            continue
+                        signature = line.strip()
+                        docstring = self._extract_docstring(lines, line_num - 1, language)
+
+                        symbol = Symbol(
+                            id=Symbol.compute_id(relative, name),
+                            name=name, kind=kind, file_path=relative,
+                            line_start=line_num,
+                            line_end=self._find_symbol_end(lines, line_num - 1, language),
+                            signature=signature, docstring=docstring,
+                        )
+                        self._symbols[symbol.id] = symbol
+                        file_summary.symbols.append(symbol.id)
+
+                        im = _IMPORT_RE.match(line)
+                        if im:
+                            from_module = im.group(1)
+                            import_targets = im.group(2)
+                            import_module = im.group(3)
+                            if from_module and import_targets:
+                                targets = import_targets.strip()
+                                if targets == "*":
+                                    file_summary.imports.append(f"*:{from_module}")
+                                else:
+                                    for target in targets.split(","):
+                                        target = target.strip()
+                                        if " as " in target:
+                                            target = target.split(" as ")[0].strip()
+                                        file_summary.imports.append(target)
+                            elif import_module:
+                                file_summary.imports.append(import_module.strip())
+                            elif from_module:
+                                file_summary.imports.append(from_module.strip())
+                        break
 
         self._files[relative] = file_summary
         return file_summary
