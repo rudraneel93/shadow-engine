@@ -137,12 +137,29 @@ class ShadowEngine:
         self._save_metrics()
         record_context()
 
+        # Phase 3.4: Meta-reasoning priors — classification, approach, historical evidence
+        suggestion = self.suggest(task_description)
+        parts: list[str] = ["## Shadow Engineer — Context for ChatGPT", ""]
+        parts.append("### Problem Classification")
+        parts.append(f"- **Type**: {suggestion['problem_type']} (confidence: {suggestion['classification_confidence']:.2f})")
+        parts.append(f"- **Recommended Approach**: {suggestion['recommended_approach']}")
+        expected = suggestion.get("expected_success_rate", 0.0)
+        if expected > 0:
+            parts.append(f"- **Expected Success Rate**: {expected:.0%}")
+        parts.append(f"- **Best Model**: {suggestion.get('best_model', 'unknown')}")
+        parts.append("")
+        evidence = suggestion.get("evidence", f"Based on {suggestion.get('total_attempts', 0)} tracked sessions, '{suggestion['recommended_approach']}' has the highest success rate for {suggestion['problem_type']} tasks.")
+        parts.append("### Historical Insight")
+        parts.append(f"- {evidence}")
+        parts.append("")
+
         if self._chroma is not None and self._chroma.count() > 0:
             try:
                 semantic_results = self._chroma.search(task_description, top_k=15)
                 if semantic_results:
-                    parts = ["## Codebase Knowledge Graph Context (Semantic)", ""]
-                    parts.append("### Semantically Relevant Symbols")
+                    parts.append("### Knowledge Graph Context")
+                    parts.append("")
+                    parts.append("#### Semantically Relevant Symbols")
                     parts.append("")
                     for skeleton_sym, score in semantic_results[:15]:
                         # Fix #1: Enrich skeleton with full symbol from store
