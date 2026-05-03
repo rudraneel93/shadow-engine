@@ -21,6 +21,7 @@ from .learning.bayesian_predictor import BayesianPredictor
 from .learning.test_tracker import TestTracker
 from .learning.pattern_merger import PatternMerger
 from .learning.code_diff_analyzer import CodeDiffAnalyzer
+from .learning.live_monitor import LiveMonitor
 from .observability import (
     log_bootstrap, record_bootstrap, record_search, record_session, record_context,
 )
@@ -75,6 +76,7 @@ class ShadowEngine:
         self.test_tracker = TestTracker(self.store)
         self.merger = PatternMerger(self.store)
         self.diff_analyzer = CodeDiffAnalyzer(self.store, self.repo_path)
+        self.live_monitor = LiveMonitor(self.store)
 
         # Fix #5: Metrics derived from DB (survives restarts)
         self._metrics: dict[str, Any] = {
@@ -190,6 +192,15 @@ class ShadowEngine:
                 semantic_results = self._chroma.search(task_description, top_k=5)
                 if semantic_results:
                     semantic_files = [s.file_path for s, _ in semantic_results[:5]]
+            except Exception:
+                pass
+
+        # Breakthrough: Live risk warnings for files being modified
+        if semantic_files:
+            try:
+                warnings = self.live_monitor.generate_warnings_text(semantic_files)
+                if warnings:
+                    parts.append(warnings)
             except Exception:
                 pass
 
@@ -338,6 +349,7 @@ class ShadowEngine:
             )
         except Exception:
             pass
+        self.live_monitor.reset()
         return ingestion
 
     def get_report(self) -> str:
