@@ -21,7 +21,6 @@ from ..knowledge_graph.models import (
     Symbol,
     SymbolKind,
     SessionRecord,
-    KnowledgeSnapshot,
 )
 
 

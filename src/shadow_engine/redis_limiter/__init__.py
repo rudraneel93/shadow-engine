@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import time as _time
 from collections import defaultdict
-from typing import Any
 
 try:
     import redis as _redis

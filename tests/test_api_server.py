@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from shadow_engine.api_server.server import app, _registry, _configured_api_key, _rate_limiter
+from shadow_engine.api_server.server import app, _registry, _configured_api_key
 
 
 @pytest.fixture

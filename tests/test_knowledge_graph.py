@@ -1,7 +1,5 @@
 """Tests for Knowledge Graph — models, indexer, and store."""
 
-import json
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 

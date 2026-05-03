@@ -13,8 +13,7 @@ from typing import Any
 
 from .knowledge_graph.indexer import CodebaseIndexer
 from .knowledge_graph.store import KnowledgeGraphStore
-from .knowledge_graph.models import Symbol, FileSummary
-from .laboratory.experiment import ExperimentRunner, ExperimentBatch, ExperimentVariant, WinnerSelection
+from .laboratory.experiment import ExperimentRunner
 from .learning.engine import LearningEngine
 
 logger = logging.getLogger(__name__)

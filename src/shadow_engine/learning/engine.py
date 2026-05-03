@@ -9,11 +9,10 @@ This module analyzes completed agent sessions to extract:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Protocol
 
 from ..knowledge_graph.models import (
-    AgentOutcome, ApproachEfficacy, CodePattern, Symbol, SessionRecord,
+    AgentOutcome, ApproachEfficacy, CodePattern, SessionRecord,
 )
 
 # Fix #6: Store protocol for duck typing (SQLiteStore + KnowledgeGraphStore)

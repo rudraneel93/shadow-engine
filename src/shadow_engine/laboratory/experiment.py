@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from ..knowledge_graph.models import AgentOutcome, ApproachEfficacy, SessionRecord
+from ..knowledge_graph.models import AgentOutcome, SessionRecord
 
 
 class ExperimentStatus(str, Enum):

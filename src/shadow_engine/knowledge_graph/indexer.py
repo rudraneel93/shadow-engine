@@ -171,8 +171,6 @@ class CodebaseIndexer:
                         from_module = im.group(1)  # "from X import Y" → X
                         import_targets = im.group(2)  # "from X import Y, Z" → "Y, Z"
                         import_module = im.group(3)  # "import X" → X
-                        alias = im.group(4)  # "import X as Y" → Y
-
                         if from_module and import_targets:
                             # Handle "from X import Y, Z" and "from X import *"
                             targets = import_targets.strip()

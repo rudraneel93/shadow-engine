@@ -3,7 +3,6 @@
 Covers #6 (SQLite backend tests) and #10 (full integration test).
 """
 
-import tempfile
 from pathlib import Path
 
 import pytest
