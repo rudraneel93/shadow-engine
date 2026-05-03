@@ -25,6 +25,7 @@ from pydantic import BaseModel
 
 from ..main import ShadowEngine
 from ..redis_limiter import RedisRateLimiter
+from ..observability import set_request_id, get_request_id, get_prometheus_metrics
 
 
 # ── Path Sandboxing (path traversal protection) ──────────────────
@@ -119,6 +120,15 @@ app = FastAPI(
     description="Self-improving background agent with persistent knowledge graph and parallel experimentation",
     version="0.1.0",
 )
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next: Any):
+    """Set a unique request ID for every incoming request."""
+    set_request_id()
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = get_request_id()
+    return response
 
 
 @app.middleware("http")
@@ -340,7 +350,9 @@ async def metrics(
     engine: ShadowEngine = Depends(get_engine),
     _: None = Depends(verify_api_key),
 ):
-    return engine.get_metrics()
+    from fastapi.responses import Response
+    prom_metrics = get_prometheus_metrics()
+    return Response(content=prom_metrics, media_type="text/plain; charset=utf-8")
 
 
 # Include same router at root AND /v1 — zero code duplication

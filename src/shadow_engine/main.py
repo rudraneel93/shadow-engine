@@ -15,6 +15,10 @@ from .knowledge_graph.indexer import CodebaseIndexer
 from .knowledge_graph.store import KnowledgeGraphStore
 from .laboratory.experiment import ExperimentRunner
 from .learning.engine import LearningEngine
+from .observability import (
+    log_bootstrap, log_search, log_ingest,
+    record_bootstrap, record_search, record_session, record_context,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -116,9 +120,15 @@ class ShadowEngine:
         if self._chroma is not None:
             self._chroma.index_symbols(symbols)
         self._metrics["bootstraps"] += 1
-        self._metrics["total_index_time_ms"] += (time.time() - t0) * 1000
+        duration_ms = (time.time() - t0) * 1000
+        self._metrics["total_index_time_ms"] += duration_ms
         self._save_metrics()
         stats = self.store.get_stats()
+
+        # Phase 2.4: Structured logging + Prometheus
+        record_bootstrap(str(self.repo_path.name), duration_ms / 1000.0, len(symbols), len(files))
+        log_bootstrap(str(self.repo_path.name), len(symbols), len(files), duration_ms)
+
         return {
             "status": "bootstrapped", "repository": str(self.repo_path.name),
             "symbols_indexed": len(symbols), "files_indexed": len(files),
@@ -129,6 +139,7 @@ class ShadowEngine:
     def get_context(self, task_description: str) -> str:
         self._metrics["contexts_generated"] += 1
         self._save_metrics()
+        record_context()
 
         if self._chroma is not None and self._chroma.count() > 0:
             try:
@@ -167,6 +178,8 @@ class ShadowEngine:
         t0 = time.time()
         self._metrics["searches"] += 1
         self._save_metrics()
+
+        record_search((time.time() - t0) * 1000)
 
         if self._chroma is not None and self._chroma.count() > 0:
             try:
@@ -222,6 +235,7 @@ class ShadowEngine:
                       duration_seconds: float = 0.0, token_count: int = 0) -> dict[str, Any]:
         self._metrics["sessions_recorded"] += 1
         self._save_metrics()
+        record_session(outcome, "unknown")  # problem_type determined during ingestion
         from .knowledge_graph.models import AgentOutcome, SessionRecord
         session = SessionRecord(
             session_id=session_id, repository=str(self.repo_path.name),
