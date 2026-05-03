@@ -20,6 +20,7 @@ from .learning.impact_predictor import ImpactPredictor
 from .learning.bayesian_predictor import BayesianPredictor
 from .learning.test_tracker import TestTracker
 from .learning.pattern_merger import PatternMerger
+from .learning.code_diff_analyzer import CodeDiffAnalyzer
 from .observability import (
     log_bootstrap, record_bootstrap, record_search, record_session, record_context,
 )
@@ -73,6 +74,7 @@ class ShadowEngine:
         self.bayesian = BayesianPredictor(self.store)
         self.test_tracker = TestTracker(self.store)
         self.merger = PatternMerger(self.store)
+        self.diff_analyzer = CodeDiffAnalyzer(self.store, self.repo_path)
 
         # Fix #5: Metrics derived from DB (survives restarts)
         self._metrics: dict[str, Any] = {
@@ -171,6 +173,15 @@ class ShadowEngine:
                 parts.append(pattern_context)
         except Exception:
             pass  # Graceful degradation
+
+        # Deep Feature #4: Code-level diff patterns from git history
+        try:
+            code_context = self.diff_analyzer.build_code_pattern_context(
+                suggestion['problem_type'])
+            if code_context:
+                parts.append(code_context)
+        except Exception:
+            pass
 
         # Gather relevant files from semantic search (for risk + test analysis)
         semantic_files: list[str] = []
@@ -319,6 +330,12 @@ class ShadowEngine:
             )
             self.patterns.invalidate_cache()
             self.predictor.invalidate_cache()
+
+            # Deep Feature #4: Extract code-level patterns from git diff history
+            self.diff_analyzer.extract_patterns_from_git_history(
+                problem_type=ingestion.get("problem_type", "general"),
+                session_id=session_id,
+            )
         except Exception:
             pass
         return ingestion
