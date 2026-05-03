@@ -90,6 +90,49 @@ Shadow Engineer doesn't just dump your codebase into a prompt. It provides **met
 
 ---
 
+## 🔬 Deep Learning Pipeline (v0.7.0)
+
+Every context block now includes six layers of intelligence before the knowledge graph:
+
+```markdown
+## Shadow Engineer — Context for ChatGPT
+
+### Problem Classification
+- Type + confidence score → no guessing
+
+### Historical Insight
+- Which approaches work, which fail, and why
+
+### Proven Fix Patterns (deduplicated)
+- Recurring patterns from successful sessions, merged via Jaccard similarity
+
+### Proven Code-Level Fix Patterns
+- Extracted from real git diff history:
+  null_guard (90%), error_handling (90%), type_annotation (90%)
+
+### Test Risk by File
+- "test_rate_limit.py fails 85% of the time when rate_limiter.py changes"
+
+### Risk Assessment (Bayesian)
+- Beta-Binomial posterior with 95% credible intervals
+- Shrinkage toward prior prevents overconfidence on small samples
+
+### Knowledge Graph Context
+- Semantically relevant symbols via ChromaDB embeddings
+```
+
+| Deep Feature | What It Does | Status |
+|-------------|-------------|--------|
+| **Diff Pattern Extraction** | Parses git history to find recurring fix patterns (null_guard, error_handling, type_annotation) | ✅ v0.7.0 |
+| **Bayesian Impact Prediction** | Beta-Binomial P(failure \| file) with 95% CI — not simple ratios | ✅ v0.7.0 |
+| **Per-Test Risk Correlation** | Maps files to specific test failure rates across sessions | ✅ v0.7.0 |
+| **Pattern Similarity Merging** | Jaccard deduplication prevents pattern fragmentation | ✅ v0.7.0 |
+| **Code-Level Fix Patterns** | Answers "what code should I write?" with real examples | ✅ v0.7.0 |
+
+> Reproduce: `python scripts/build_efficacy_data.py` then `shadow-engine context "your task"`
+
+---
+
 ## Table of Contents
 
 1. [What Is Shadow Engineer?](#what-is-shadow-engine)

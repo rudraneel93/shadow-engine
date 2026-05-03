@@ -1,6 +1,6 @@
-o integrate and use it# Shadow Engineer API Documentation
+# Shadow Engineer API Documentation
 
-**Version:** 1.0.0
+**Version:** 0.7.0
 **Base URL:** `http://localhost:8000` (or your deployment URL)
 **OpenAPI Spec:** `http://localhost:8000/docs` (Swagger UI) | `http://localhost:8000/redoc` (ReDoc)
 
@@ -98,7 +98,7 @@ curl -X POST http://localhost:8000/bootstrap?repo=/path/to/other/repo
 
 ### `GET /context`
 
-Get a knowledge graph context block to inject into an agent prompt. Uses ChromaDB semantic search when available, falling back to text-based search.
+Get a knowledge graph context block to inject into an agent prompt. The context includes six layers of intelligence: problem classification, historical insight, proven fix patterns (deduplicated), code-level diff patterns from git history, test risk by file, Bayesian risk assessment, and semantic symbol context. Uses ChromaDB semantic search when available, falling back to text-based search.
 
 **Query Parameters:**
 
