@@ -16,8 +16,7 @@ from .knowledge_graph.store import KnowledgeGraphStore
 from .laboratory.experiment import ExperimentRunner
 from .learning.engine import LearningEngine
 from .observability import (
-    log_bootstrap, log_search, log_ingest,
-    record_bootstrap, record_search, record_session, record_context,
+    log_bootstrap, record_bootstrap, record_search, record_session, record_context,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,11 +102,8 @@ class ShadowEngine:
 
         symbols, files = self.indexer.index()
 
-        indexed_count = 0
-        skipped_count = 0
         for sym in symbols.values():
             self.store.upsert_symbol(sym)
-            indexed_count += 1
 
         for file_path, file_summary in files.items():
             self.store.upsert_file(file_summary)

@@ -325,7 +325,6 @@ class TestKnowledgeGraphStore:
         """Create a temporary store for testing."""
         store = KnowledgeGraphStore(tmp_path / "test_store")
         yield store
-        # Cleanup
         import shutil
         if (tmp_path / "test_store").exists():
             shutil.rmtree(tmp_path / "test_store", ignore_errors=True)
