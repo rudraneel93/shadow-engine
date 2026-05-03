@@ -68,7 +68,6 @@ class ChromaSymbolStore:
             self._client = None
             self._collection = None
 
-        # Fix #5: Load persisted fallback data on init
         self._fallback_symbols = self._load_fallback_json()
 
         if EMBEDDING_AVAILABLE:
@@ -87,7 +86,7 @@ class ChromaSymbolStore:
         if self._embedder is not None and EMBEDDING_AVAILABLE:
             try:
                 embeddings = self._embedder.encode(texts, show_progress_bar=False)
-                return [emb.tolist() for emb in embeddings]  # type: ignore[union-attr]
+                return [emb.tolist() for emb in embeddings]
             except Exception as e:
                 logger.warning(f"Embedding generation failed: {e}. Using ChromaDB default.")
                 return []
@@ -125,7 +124,7 @@ class ChromaSymbolStore:
                 kwargs: dict[str, Any] = {"ids": ids, "documents": documents, "metadatas": metadatas}
                 if embeddings:
                     kwargs["embeddings"] = embeddings
-                self._collection.upsert(**kwargs)  # type: ignore[union-attr]
+                self._collection.upsert(**kwargs)
             except Exception as e:
                 logger.warning(f"ChromaDB upsert failed: {e}. Persisting to JSON fallback.")
                 self._write_fallback_json(ids, documents, metadatas)
@@ -137,7 +136,37 @@ class ChromaSymbolStore:
             self._fallback_symbols = list(symbols.items())
             return len(self._fallback_symbols)
 
+    # Fix: search() now accepts optional store for full symbol enrichment
     def search(
+        self, query: str, top_k: int = 20, kind_filter: str | None = None,
+        store: Any = None,
+    ) -> list[tuple[Symbol, float]]:
+        """Semantic search for symbols.
+
+        Args:
+            query: Natural language search query
+            top_k: Maximum results to return
+            kind_filter: Optional symbol kind filter
+            store: Optional store to enrich skeleton symbols with full data
+
+        Returns:
+            List of (Symbol, relevance_score) tuples, sorted by relevance
+        """
+        raw_results = self._search_raw(query, top_k, kind_filter)
+
+        # Fix #2.2: Enrich skeleton symbols with full data from store
+        if store is not None and hasattr(store, 'get_symbol'):
+            enriched: list[tuple[Symbol, float]] = []
+            for skeleton_sym, score in raw_results:
+                full_sym = store.get_symbol(skeleton_sym.id)
+                if full_sym is not None:
+                    enriched.append((full_sym, score))
+                else:
+                    enriched.append((skeleton_sym, score))
+            return enriched
+        return raw_results
+
+    def _search_raw(
         self, query: str, top_k: int = 20, kind_filter: str | None = None
     ) -> list[tuple[Symbol, float]]:
         if self._collection is not None:
@@ -153,7 +182,7 @@ class ChromaSymbolStore:
                 kwargs["where"] = where_filter
 
             try:
-                results = self._collection.query(**kwargs)  # type: ignore[union-attr]
+                results = self._collection.query(**kwargs)
             except Exception as e:
                 logger.warning(f"ChromaDB query failed: {e}. Falling back to text search.")
                 return self._fallback_search(query, top_k, kind_filter)

@@ -155,11 +155,14 @@ class ShadowEngine:
 
         if self._chroma is not None and self._chroma.count() > 0:
             try:
-                results = self._chroma.search(query, top_k=20, kind_filter=kind)
+                results = self._chroma.search(query, top_k=20, kind_filter=kind, store=self.store)
                 self._metrics["total_search_time_ms"] += (time.time() - t0) * 1000
                 return [
                     {"id": sym.id, "name": sym.name, "kind": sym.kind.value,
-                     "file_path": sym.file_path, "complexity": sym.complexity_score}
+                     "file_path": sym.file_path,
+                     "signature": sym.signature[:100] if sym.signature else "",
+                     "docstring": (sym.docstring or "")[:200],
+                     "complexity": sym.complexity_score}
                     for sym, score in results
                 ]
             except Exception:
