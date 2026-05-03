@@ -1,8 +1,8 @@
 # Shadow Engineer — Production Readiness Roadmap
 
-**Current State:** v0.2.2 — 155 tests passing, 0 failures, ~75% coverage
+**Current State:** v0.3.0 — 155 tests passing, 0 failures, ~75% coverage
 **Target:** v1.0.0 — Production-grade for customer-facing SaaS
-**Estimated Timeline:** 3–9 weeks depending on scope
+**Estimated Timeline:** 2–8 weeks depending on scope
 
 ---
 
@@ -16,24 +16,7 @@
 | 4 | `StoreProtocol` completed with `get_patterns_by_type()` | ✅ Done | `b7f218f` |
 | 5 | ChromaDB skeleton symbols enriched with full symbol data | ✅ Done | `d4a2c7f` |
 | 6 | Incremental indexing — `file_hashes` table + hash storage during bootstrap | ✅ Done | `e6b8f03` |
-
----
-
-## Phase 2: Remaining Critical (Week 1, ~1 week)
-
-### Story 2.1: Structured Logging & Observability
-**Effort:** 1 week  
-**Priority:** 🔴 Critical  
-**Impact:** No structured logging means operators cannot monitor or debug the system in production.
-**Status:** ⏳ Not started
-
-**Implementation:**
-1. Add `structlog` dependency for structured JSON logging
-2. Add request ID middleware (UUID per request, propagated to all log statements)
-3. Add `prometheus_client` dependency — expose `/metrics` in Prometheus format
-4. Log key operations: bootstrap (duration, symbol count), search (duration), ingest (outcome)
-- **Files:** `api_server/server.py`, `main.py`, new `observability.py`
-- **Verification:** `GET /metrics` returns Prometheus-formatted metrics
+| 7 | Structured logging + Prometheus metrics + request ID middleware | ✅ Done | `9866c22` |
 
 ---
 
@@ -140,11 +123,10 @@
 
 | Phase | Stories | Effort | Cumulative | Milestone |
 |-------|---------|--------|-----------|-----------|
-| **Done** | 1–6 | — | — | v0.2.2 |
-| **Phase 2** | 2.1 (logging) | 1 week | 1 week | v0.3.0 — Internal team ready |
-| **Phase 3** | 3.1–3.3 | 1 week | 2 weeks | v0.4.0 — Quality improved |
-| **Phase 4** | 4.1–4.3 | 2 weeks | 4 weeks | v1.0.0 — SaaS ready |
-| **Phase 5** | 5.1–5.3 | 6 weeks | 10 weeks | v1.x — Enterprise ready |
+| **Done** | 1–7 | — | — | v0.3.0 |
+| **Phase 3** | 3.1–3.3 | 1 week | 1 week | v0.4.0 — Quality improved |
+| **Phase 4** | 4.1–4.3 | 2 weeks | 3 weeks | v1.0.0 — SaaS ready |
+| **Phase 5** | 5.1–5.3 | 6 weeks | 9 weeks | v1.x — Enterprise ready |
 
 **After Phase 2: Use internally with confidence.**
 **After Phase 4: Offer as SaaS to paying customers.**
