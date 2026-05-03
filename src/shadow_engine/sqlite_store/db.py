@@ -411,9 +411,11 @@ class SQLiteStore:
         result: list[dict[str, Any]] = []
         for r in rows:
             exs = conn.execute("SELECT file_path FROM fix_pattern_examples WHERE pattern_id=?", (r["id"],)).fetchall()
-            result.append({"pattern_type": r["pattern_type"], "problem_type": r["problem_type"],
+            result.append({"id": r["id"], "pattern_type": r["pattern_type"],
+                           "problem_type": r["problem_type"],
                            "description": r["description"], "approach": r["approach"],
-                           "examples": [e["file_path"] for e in exs], "confidence": r["confidence"]})
+                           "examples": [e["file_path"] for e in exs],
+                           "confidence": r["confidence"], "session_id": r["session_id"]})
         return result
 
     # ── Predictive Impact (Breakthrough #2) ─────────────────────

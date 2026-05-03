@@ -19,6 +19,7 @@ from .learning.diff_patterns import DiffPatternExtractor
 from .learning.impact_predictor import ImpactPredictor
 from .learning.bayesian_predictor import BayesianPredictor
 from .learning.test_tracker import TestTracker
+from .learning.pattern_merger import PatternMerger
 from .observability import (
     log_bootstrap, record_bootstrap, record_search, record_session, record_context,
 )
@@ -71,6 +72,7 @@ class ShadowEngine:
         self.predictor = ImpactPredictor(self.store)
         self.bayesian = BayesianPredictor(self.store)
         self.test_tracker = TestTracker(self.store)
+        self.merger = PatternMerger(self.store)
 
         # Fix #5: Metrics derived from DB (survives restarts)
         self._metrics: dict[str, Any] = {
@@ -161,14 +163,14 @@ class ShadowEngine:
         parts.append(f"- {evidence}")
         parts.append("")
 
-        # Breakthrough #1: Proven fix patterns from historical data
+        # Breakthrough #1: Proven fix patterns with deduplication
         try:
-            pattern_context = self.patterns.build_pattern_context(
+            pattern_context = self.merger.get_merged_context(
                 suggestion['problem_type'], task_description)
             if pattern_context:
                 parts.append(pattern_context)
         except Exception:
-            pass  # Graceful degradation if pattern extraction fails
+            pass  # Graceful degradation
 
         # Gather relevant files from semantic search (for risk + test analysis)
         semantic_files: list[str] = []
