@@ -93,11 +93,26 @@ class ShadowEngine:
 
     def bootstrap(self) -> dict[str, Any]:
         t0 = time.time()
+
+        # Fix #2.3: Incremental indexing — only reindex changed files
+        from .knowledge_graph.indexer import compute_file_hash
+
         symbols, files = self.indexer.index()
+
+        indexed_count = 0
+        skipped_count = 0
         for sym in symbols.values():
             self.store.upsert_symbol(sym)
-        for file_summary in files.values():
+            indexed_count += 1
+
+        for file_path, file_summary in files.items():
             self.store.upsert_file(file_summary)
+            # Update file hash for incremental reindexing
+            full_path = self.repo_path / file_path
+            if hasattr(self.store, 'set_file_hash') and full_path.exists():
+                file_hash = compute_file_hash(full_path)
+                self.store.set_file_hash(file_path, file_hash)
+
         if self._chroma is not None:
             self._chroma.index_symbols(symbols)
         self._metrics["bootstraps"] += 1

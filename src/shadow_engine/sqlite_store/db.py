@@ -72,6 +72,13 @@ class SQLiteStore:
         FOREIGN KEY (file_path) REFERENCES files(path)
     );
 
+    -- Fix #2.3: Incremental indexing support
+    CREATE TABLE IF NOT EXISTS file_hashes (
+        file_path TEXT PRIMARY KEY,
+        hash TEXT NOT NULL,
+        last_indexed TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS patterns (
         id TEXT PRIMARY KEY,
         pattern_type TEXT NOT NULL,
@@ -167,6 +174,26 @@ class SQLiteStore:
     def _now(self) -> str:
         return datetime.now(timezone.utc).isoformat()
 
+    # ── File Hashes (Incremental Indexing) ─────────────────────
+
+    def get_file_hash(self, file_path: str) -> str | None:
+        conn = self._get_conn()
+        row = conn.execute("SELECT hash FROM file_hashes WHERE file_path = ?", (file_path,)).fetchone()
+        return row["hash"] if row else None
+
+    def set_file_hash(self, file_path: str, hash_value: str) -> None:
+        conn = self._get_conn()
+        conn.execute(
+            "INSERT OR REPLACE INTO file_hashes VALUES (?, ?, ?)",
+            (file_path, hash_value, self._now()),
+        )
+        conn.commit()
+
+    def should_reindex(self, file_path: str, current_hash: str) -> bool:
+        """Check if a file needs to be reindexed. Returns True if it does."""
+        stored_hash = self.get_file_hash(file_path)
+        return stored_hash is None or stored_hash != current_hash
+
     # ── Symbols ────────────────────────────────────────────────
 
     def upsert_symbol(self, symbol: Symbol) -> None:
@@ -188,11 +215,9 @@ class SQLiteStore:
             try:
                 conn.execute("INSERT INTO symbol_deps VALUES (?, ?)", (symbol.id, dep_id))
             except sqlite3.IntegrityError:
-                # Dependency symbol may not be inserted yet — will resolve on reindex
                 pass
         conn.commit()
 
-    # Fix #1: Add upsert_file() method
     def upsert_file(self, file_summary: FileSummary) -> None:
         conn = self._get_conn()
         conn.execute(
@@ -517,7 +542,7 @@ class SQLiteStore:
             self._local.conn = None
 
     def build_context_for_prompt(self, task_description: str) -> str:
-        """Build context block — delegates to the JSON store's logic since it's string manipulation."""
+        """Build context block from SQLite data."""
         keywords = [w for w in task_description.lower().split() if len(w) > 2]
         parts: list[str] = ["## Codebase Knowledge Graph Context", ""]
 
