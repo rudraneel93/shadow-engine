@@ -13,86 +13,33 @@
 
 ---
 
+> **Status: Technology Preview (Alpha)** — Actively developed with real-data validation. See [Known Limitations](#known-limitations) and [Roadmap](ROADMAP.md).
+
 > **No existing background agent framework does this.** Every agent today (Ramp's Inspect, Open-Inspect, Copilot, Claude Code) treats every session as a blank slate. Session 100 is no smarter than Session 1. Shadow Engineer remembers — and gets smarter with every session.
 
 ---
 
-## 📊 Real-World E2E Verified
+## 📊 Verified Against Real Data
 
-Shadow Engineer was tested end-to-end with **Ollama qwen3:8b (5.2 GB local LLM)** on its own codebase (dogfooding). The full pipeline — bootstrap → classify → context → LLM → analyze → ingest:
+Shadow Engineer is tested against its own codebase (dogfooding) using **real session data** stored in SQLite — no mocks, no simulations:
 
-| Metric | Result | Grade |
-|--------|--------|-------|
-| **Classification accuracy** | 3/3 tasks correctly classified (bug_fix, feature, refactor) | **A** |
-| **Context generation** | 123–129 lines per task, ~35 real symbol references | **A** |
-| **LLM response quality** | qwen3:8b reasoned from context, produced 9K–11K char responses | **B** |
-| **File identification** | 83% avg match (2/3 at 100%, 1/3 at 50%) | **A** |
-| **Cross-session learning** | 6 patterns extracted from 3 sessions | **A** |
-| **Pipeline latency** | 130s avg per task (local 5.2 GB model) | **B** |
-| **Total cost** | $0.00 (free local model, no API keys) | **A+** |
+| Test Suite | Tests | Result |
+|-----------|-------|--------|
+| **Core Learning Features** (causal, simulation, temporal, intervention, debate, strategy evolution) | 32 | **100% pass** |
+| **Existing Unit Tests** (knowledge graph, learning engine, laboratory, API, async) | ~80 | **All passing** |
+| **Ruff Lint** | — | **All checks passed** |
 
-**Overall grade: 3.7/4.0 — Pipeline rated PRODUCTION-READY.**
+Tested against a real database with 211 symbols across 26 files, 5 sessions, 92 fix patterns, and 3 learned patterns.
 
-The same 3 tasks were tested across **3 different local models** to validate consistency:
-
-| Model | Size | File Match | Success | Tokens | Total Time | Avg Latency | Cost |
-|-------|------|-----------|---------|--------|-----------|------------|------|
-| **qwen3:8b** | 5.2 GB local | **83%** | 100% | ~5,954 | 420s | 140s | $0.00 |
-| **qwen3-coder:480b-cloud** | Cloud | **83%** | 100% | ~1,653 | 221s | 74s | $0.00 |
-| **gpt-oss:120b-cloud** | Cloud | **83%** | 100% | ~6,239 | 94s | 31s | $0.00 |
-
-**Key finding:** All 3 models achieved identical 83% file match accuracy. The knowledge graph (not the model) drives codebase understanding — the model just needs to be capable of reading the provided context and reasoning from it. **Any local LLM works.**
-
-> Reproduce: `python scripts/test_multimodel_e2e.py` (requires Ollama + the models above)
-> Single-model test: `python scripts/test_ollama_e2e.py`
+> Reproduce: `python scripts/test_breakthrough_features.py`
+> Existing tests: `pytest tests/`
+> Lint: `ruff check src/`
 
 ---
 
-## 🧠 Meta-Reasoning Engine (v0.4.0)
+## 🔬 Advanced Learning Pipeline (v0.9.0)
 
-Shadow Engineer doesn't just dump your codebase into a prompt. It provides **meta-reasoning priors** — classification, strategy recommendation, and historical efficacy data — before the knowledge graph context:
-
-```markdown
-## Shadow Engineer — Context for ChatGPT
-
-### Problem Classification
-- **Type**: bug_fix (confidence: 0.95)
-- **Recommended Approach**: Targeted Fix
-- **Expected Success Rate**: 100% (4/4 attempts)
-- **Last Successful Model**: qwen3:8b
-
-### Historical Insight
-- Targeted Fix for bug_fix: 4/4 succeeded (100%). Avoid Aggressive Rewrite — 0/1 succeeded for bug_fix.
-- TDD First for testing: 3/3 succeeded (100%). Avoid Full Coverage — 0/1 succeeded.
-- Extensible Implementation for feature: 3/3 succeeded (100%). Avoid Clean Sweep — 0/1 succeeded.
-*Rates from 18 ingested sessions. Small sample — more sessions increase confidence.
-
-### Knowledge Graph Context
-#### Semantically Relevant Symbols
-- **ChromaSymbolStore** (`class`) in `chroma_store/vector_store.py` (relevance: 0.89)
-  Vector-backed symbol search using ChromaDB...
-```
-
-**Pipeline: Task → Classification → Strategy → Context → Prompt**
-
-| Problem Type | Best Approach | Success Rate* | Last Successful Model |
-|-------------|--------------|-------------|-----------------------|
-| bug_fix | Targeted Fix | 100% (4/4) | qwen3:8b |
-| feature | Extensible Implementation | 100% (3/3) | qwen3:8b |
-| testing | TDD First | 100% (3/3) | qwen3:8b |
-| refactor | Incremental Rewrite | 100% (3/3) | qwen3:8b |
-| bug_fix (avoid) | Aggressive Rewrite | 0% (0/1) | — |
-| feature (avoid) | Clean Sweep | 0% (0/1) | — |
-
-\* *Rates from 18 ingested sessions. Small sample — more sessions increase confidence.*
-
-> Build real efficacy data: `python scripts/build_efficacy_data.py`
-
----
-
-## 🔬 Deep Learning Pipeline (v0.7.0)
-
-Every context block now includes six layers of intelligence before the knowledge graph:
+Every context block includes multiple layers of intelligence before the knowledge graph:
 
 ```markdown
 ## Shadow Engineer — Context for ChatGPT
@@ -103,12 +50,15 @@ Every context block now includes six layers of intelligence before the knowledge
 ### Historical Insight
 - Which approaches work, which fail, and why
 
+### Causal Analysis
+- WHY certain approaches work — not just correlation
+- Counterfactual: "What if we had used approach X instead?"
+
 ### Proven Fix Patterns (deduplicated)
 - Recurring patterns from successful sessions, merged via Jaccard similarity
 
 ### Proven Code-Level Fix Patterns
-- Extracted from real git diff history:
-  null_guard (90%), error_handling (90%), type_annotation (90%)
+- Extracted from real git diff history
 
 ### Test Risk by File
 - "test_rate_limit.py fails 85% of the time when rate_limiter.py changes"
@@ -117,99 +67,54 @@ Every context block now includes six layers of intelligence before the knowledge
 - Beta-Binomial posterior with 95% credible intervals
 - Shrinkage toward prior prevents overconfidence on small samples
 
+### Temporal Anomaly Detection
+- Bayesian Online Changepoint Detection (BOCD) for detecting performance shifts
+- Health score forecasting with linear trend analysis
+
+### PR Outcome Simulation
+- Monte Carlo simulation of test breakage, review rejection, and rework probability
+
 ### Knowledge Graph Context
 - Semantically relevant symbols via ChromaDB embeddings
 ```
 
-| Deep Feature | What It Does | Status |
-|-------------|-------------|--------|
-| **Diff Pattern Extraction** | Parses git history to find recurring fix patterns (null_guard, error_handling, type_annotation) | ✅ v0.7.0 |
-| **Bayesian Impact Prediction** | Beta-Binomial P(failure \| file) with 95% CI — not simple ratios | ✅ v0.7.0 |
-| **Per-Test Risk Correlation** | Maps files to specific test failure rates across sessions | ✅ v0.7.0 |
-| **Pattern Similarity Merging** | Jaccard deduplication prevents pattern fragmentation | ✅ v0.7.0 |
-| **Code-Level Fix Patterns** | Answers "what code should I write?" with real examples | ✅ v0.7.0 |
-| **Live Session Monitoring** | Real-time file risk warnings during coding sessions | ✅ v0.8.0 |
-| **Natural Language Q&A** | Answers English questions about the codebase (7 question types) | ✅ v0.8.0 |
-| **Hot Zone Detection** | Weighted scoring identifies files causing disproportionate failures | ✅ v0.8.0 |
+---
 
-> Reproduce: `python scripts/build_efficacy_data.py` then `shadow-engine context "your task"`
+## 🧪 Experimental AI Engines (v0.10.0)
+
+All verified against real shadow-engine session data. These modules are functional but should be considered experimental — they improve with more session data.
+
+| Engine | What It Does | Data Needs |
+|--------|-------------|------------|
+| **Causal Reasoning** | Structural Causal Models (SCM) with do-calculus — answers "WHY does this approach work?" and counterfactuals | 10+ sessions |
+| **Multi-Agent Debate** | Variants critique each other on correctness, completeness, test coverage, simplicity, safety; synthesis generation | 2+ variants |
+| **PR Outcome Simulator** | Monte Carlo simulation predicting test breakage, review rejection, and rework probability before commit | 5+ sessions |
+| **Temporal Anomaly Detection** | BOCD changepoint detection, Z-score spike detection, health score forecasting with linear regression | 10+ sessions |
+| **Intervention Engine** | WARN→INTERVENE→ABORT→ESCALATE ladder with configurable risk thresholds | 5+ sessions |
+| **Strategy Evolution** | Genetic algorithms (mutation, crossover, selection) evolve optimal strategy templates over time | 20+ sessions |
+| **Speculative Context** | LRU-cached background pre-computation of agent context with TTL eviction | Any |
+| **Cross-Repo Transfer** | Pattern abstraction (strip file paths, generalize symbols) for federated learning across repositories | 10+ sessions |
+
+> Test all engines: `python scripts/test_breakthrough_features.py`
 
 ---
 
-## 🚀 Breakthrough Features (v0.8.0)
+## 🏗️ Core Features
 
-Three genuinely novel capabilities tested against 18 real sessions with 490 symbols. Comprehensive E2E test score: **5/5 PRODUCTION-READY.**
-
-### Live Session Monitoring
-Real-time risk warnings during coding sessions. When an agent starts modifying files, Shadow Engineer provides live, data-driven risk assessment:
-
-| File | Risk | Mods | Break Rate | Shrinkage |
-|------|------|------|-----------|-----------|
-| `knowledge_graph/store.py` | 🔴 HIGH | 2 | 100% | 50% |
-| `main.py` | 🟡 MEDIUM | 6 | 33% | 75% |
-| `sqlite_store/db.py` | 🟡 MEDIUM | 5 | 40% | 71% |
-| `knowledge_graph/indexer.py` | 🟢 LOW | 4 | 25% | 67% |
-
-### Natural Language Codebase Q&A
-Ask plain-English questions. Zero LLM calls — answers from structured data:
-
-```
-Q: "What's the most dangerous file?"
-A: main.py — 6 modifications, 2 failures (33%)
-   sqlite_store/db.py — 5 modifications, 2 failures (40%)
-
-Q: "Who depends on ShadowEngine?"
-A: get_engine() → used by get_context, search, impact, suggest, experiment...
-   ShadowEngine → used by cli_main
-```
-
-### Hot Zone Detection
-Weighted composite scoring (mod_freq × 40% + failure_rate × 40% + fanout × 20%) identifies files that cause disproportionate failures. 12 hot zones detected from 18 real sessions.
-
-> Comprehensive test: `python scripts/test_breakthroughs.py`
-
----
-
-## 🎯 Analytics & Decision Support (v0.9.0)
-
-Three new capabilities tested against 18 real sessions with 506 symbols.
-
-### Reference Session Replay
-Finds semantically similar past sessions using Jaccard similarity on task descriptions. When you ask "fix the login bug," it finds what happened the last time someone fixed a similar bug:
-
-```
-**1. ❌ FAILURE** (40% similarity)
-- Task: Fix the login rate-limiting bug by rewriting auth middleware
-- Approach: Aggressive Rewrite — 8 files changed, 4/12 tests passed
-
-**2. ✅ SUCCESS** (25% similarity)
-- Task: Fix ChromaDB skeleton symbols bug
-- Approach: Targeted Fix — 2 files changed, 155/155 tests passed
-
-→ Recommends: Targeted Fix (successful), avoid Aggressive Rewrite (failed)
-```
-
-### Codebase Health Score
-A single 0-100 metric summarizing overall codebase quality. Computed from hot zones, failure rates, and risk trends:
-
-| Component | Score | Weight |
-|-----------|-------|--------|
-| Hot Zones | 0/100 | 30% |
-| Failure Rate | 78/100 | 40% |
-| Risk Trend | 100/100 | 30% |
-| **Overall** | **61/100 — 🟡 Fair** | |
-
-*Based on 18 sessions (22.2% failure rate, trending downward).*
-
-### Pre-Commit Risk Gate
-Before every commit, computes a combined risk score from file history, approach efficacy, and dependency fanout. Recommends alternatives when risk exceeds 50%:
-
-| Approach | Risk | Components |
-|----------|------|-----------|
-| Aggressive Rewrite | 🟡 MEDIUM (59%) | File 41% + Approach 100% + Fanout 27% |
-| **→ Recommended: Targeted Fix** | 🟢 LOW (24%) | Same files, 0% approach risk |
-
-> Reproduce: `python scripts/build_efficacy_data.py` then `python scripts/test_breakthroughs.py`
+| Feature | What It Does | Status |
+|---------|-------------|--------|
+| **Diff Pattern Extraction** | Parses git history to find recurring fix patterns (null_guard, error_handling, type_annotation) | ✅ |
+| **Bayesian Impact Prediction** | Beta-Binomial P(failure \| file) with 95% CI — not simple ratios | ✅ |
+| **Per-Test Risk Correlation** | Maps files to specific test failure rates across sessions | ✅ |
+| **Pattern Similarity Merging** | Jaccard deduplication prevents pattern fragmentation | ✅ |
+| **Code-Level Fix Patterns** | Answers "what code should I write?" with real examples | ✅ |
+| **Live Session Monitoring** | Real-time file risk warnings during coding sessions | ✅ |
+| **Natural Language Q&A** | Answers English questions about the codebase (7 question types) | ✅ |
+| **Hot Zone Detection** | Weighted scoring identifies files causing disproportionate failures | ✅ |
+| **Session Replay** | Finds semantically similar past sessions using Jaccard similarity | ✅ |
+| **Codebase Health Score** | Single 0-100 metric from hot zones, failure rates, and risk trends | ✅ |
+| **Pre-Commit Risk Gate** | Combined risk score from file history, approach efficacy, and dependency fanout | ✅ |
+| **Context Budget Manager** | Token-budget-aware context builder prevents model context overflow | ✅ |
 
 ---
 
@@ -227,8 +132,9 @@ Before every commit, computes a combined risk score from file history, approach 
 10. [Configuration Reference](#configuration-reference)
 11. [Supported Languages](#supported-languages)
 12. [Project Structure](#project-structure)
-13. [FAQ](#faq)
-14. [License](#license)
+13. [Known Limitations](#known-limitations)
+14. [FAQ](#faq)
+15. [License](#license)
 
 ---
 
@@ -242,7 +148,7 @@ Shadow Engineer is a **learning layer** that sits on top of any background codin
 | **Laboratory** | Spawns N parallel agent sessions with different strategies and picks the winner | Not one attempt — choose from proven solutions |
 | **Learning Engine** | Analyzes every session to extract patterns, track efficacy, and suggest approaches | Session 100 is smarter than Session 1 — compounding intelligence |
 
-### The Compounding Moat
+### The Compounding Effect
 
 ```
 Session 1:   No context  | No patterns  | No approach data  | ~40% success rate (baseline)
@@ -253,7 +159,7 @@ Session 200: 100+ symbols | 20+ patterns | 10+ approaches   | ~80% success rate*
 *Projected from efficacy tracking logic. Measured: 78% over 18 sessions.
 ```
 
-**Every session makes the next one smarter.** This is the defensible moat that no competitor ships.
+**Every session makes the next one smarter.** This is the defensible advantage that no competitor ships.
 
 ---
 
@@ -273,36 +179,36 @@ Current background coding agents treat every session independently:
 ## Architecture
 
 ```
-                    ┌──────────────────────────────────────────┐
-                    │           SHADOW ENGINEER                 │
-                    │                                           │
- User sends task    │  ┌──────────────┐  ┌──────────────────┐  │
-        │           │  │  Knowledge   │  │    Laboratory    │  │
-        ▼           │  │    Graph     │  │                  │  │
- ┌──────────┐       │  │              │  │  3 variants:     │  │
- │ Classify │───────┼──│ • 211 symbols│  │  • Targeted Fix  │  │
- │ problem  │       │  │ • 26 files   │  │  • Root Cause    │  │
- └────┬─────┘       │  │ • 3 patterns │  │  • Defense Depth │  │
-      │             │  └──────┬───────┘  └────────┬─────────┘  │
- ┌────▼─────┐       │         │                   │            │
- │  Build   │       │         │                   ▼            │
- │ context  │───────┼─────────┼──▶  Agent Prompt + Approach    │
- └────┬─────┘       │         │                                │
-      │             │         │     ┌──────────────────┐       │
-      │             │         │     │     Learning     │       │
-      ▼             │         │     │      Engine      │       │
- ┌──────────┐       │         │     │                  │       │
- │  Agent   │       │         │     │ • Pattern extract│       │
- │ executes │       │         └─────│ • Efficacy track │       │
- │  task    │       │               │ • Failure analyze│       │
- └────┬─────┘       │               └────────┬─────────┘       │
-      │             │                        │                 │
-      ▼             │                        ▼                 │
- ┌──────────┐       │           ┌──────────────────────┐      │
- │  Ingest  │───────┼──────────▶│  Next session is     │      │
- │  result  │       │           │  SMARTER than before  │      │
- └──────────┘       │           └──────────────────────┘      │
-                    └──────────────────────────────────────────┘
+                     ┌──────────────────────────────────────────┐
+                     │           SHADOW ENGINEER                 │
+                     │                                           │
+  User sends task    │  ┌──────────────┐  ┌──────────────────┐  │
+         │           │  │  Knowledge   │  │    Laboratory    │  │
+         ▼           │  │    Graph     │  │                  │  │
+  ┌──────────┐       │  │              │  │  3 variants:     │  │
+  │ Classify │───────┼──│ • 211 symbols│  │  • Targeted Fix  │  │
+  │ problem  │       │  │ • 26 files   │  │  • Root Cause    │  │
+  └────┬─────┘       │  │ • 3 patterns │  │  • Defense Depth │  │
+       │             │  └──────┬───────┘  └────────┬─────────┘  │
+  ┌────▼─────┐       │         │                   │            │
+  │  Build   │       │         │                   ▼            │
+  │ context  │───────┼─────────┼──▶  Agent Prompt + Approach    │
+  └────┬─────┘       │         │                                │
+       │             │         │     ┌──────────────────┐       │
+       │             │         │     │     Learning     │       │
+       ▼             │         │     │      Engine      │       │
+  ┌──────────┐       │         │     │                  │       │
+  │  Agent   │       │         │     │ • Pattern extract│       │
+  │ executes │       │         └─────│ • Efficacy track │       │
+  │  task    │       │               │ • Failure analyze│       │
+  └────┬─────┘       │               └────────┬─────────┘       │
+       │             │                        │                 │
+       ▼             │                        ▼                 │
+  ┌──────────┐       │           ┌──────────────────────┐      │
+  │  Ingest  │───────┼──────────▶│  Next session is     │      │
+  │  result  │       │           │  SMARTER than before  │      │
+  └──────────┘       │           └──────────────────────┘      │
+                     └──────────────────────────────────────────┘
 ```
 
 ### Three Engines
@@ -319,6 +225,7 @@ Current background coding agents treat every session independently:
 - **Configurable scoring** — logistic curve normalization, no arbitrary cliffs
 - **4 winner modes** — best performing, smallest change, fastest execution, first to pass
 - **Concurrent execution** — semaphore-limited parallel spawning
+- **Multi-agent debate** — variants critique each other, synthesize consensus solutions
 
 #### 3. Learning Engine — "Improve"
 - **Pattern extraction** — infers testing conventions, change scope, code review quality
@@ -326,6 +233,8 @@ Current background coding agents treat every session independently:
 - **Failure analysis** — understands why approaches fail
 - **Approach suggestion** — recommends historically-best approach and model
 - **Confidence scores** — every classification returns `(type, 0.0–1.0)` not just a label
+- **Causal reasoning** — goes beyond correlation to answer counterfactual questions
+- **Strategy evolution** — genetic algorithms tune strategies to your specific codebase
 
 ---
 
@@ -390,7 +299,7 @@ Output:
 [function] test_auth_passes_with_correct_key — tests/test_api_server.py
 ```
 
-### 3. Get AI-Ready Context (Meta-Reasoning)
+### 3. Get AI-Ready Context
 
 ```bash
 shadow-engine context "fix the login rate-limiting bug"
@@ -404,7 +313,7 @@ Output (injects into agent prompts):
 - **Type**: bug_fix (confidence: 0.95)
 - **Recommended Approach**: Targeted Fix
 - **Expected Success Rate**: 100% (4/4 attempts)
-- **Last Successful Model**: qwen3:8b
+- **Best Model**: qwen3:8b
 
 ### Historical Insight
 - Targeted Fix for bug_fix: 4/4 succeeded (100%). The one Aggressive Rewrite attempt failed.
@@ -447,7 +356,7 @@ Output:
   "classification_confidence": 0.70,
   "recommended_approach": "Extensible Implementation",
   "expected_success_rate": 1.0,
-  "last_successful_model": "qwen3:8b"
+  "best_model": "qwen3:8b"
 }
 ```
 
@@ -660,7 +569,7 @@ ingestion = await bridge.ingest_session_result(result)
 
 ## Deployment
 
-### Docker (Production)
+### Docker
 
 ```bash
 docker compose -f docker/docker-compose.yml up -d
@@ -689,11 +598,13 @@ docker run -p 8000:8000 \
 
 | Language | Extensions | Symbols Extracted |
 |----------|-----------|-------------------|
-| Python | `.py` | Functions, methods, classes |
+| Python | `.py` | Functions, methods, classes (AST-based with regex fallback) |
 | TypeScript | `.ts`, `.tsx` | Functions, classes, interfaces, enums, type aliases |
 | JavaScript | `.js`, `.jsx` | Functions, classes, constants |
 | Go | `.go` | Functions, methods, structs, interfaces |
 | Rust | `.rs` | Functions, structs, traits, enums, type aliases |
+
+> **Note:** Python uses `ast.parse()` for accurate symbol extraction. Other languages currently use regex-based extraction. Tree-sitter integration is planned for TypeScript, JavaScript, Go, and Rust (see [Roadmap](ROADMAP.md)).
 
 ---
 
@@ -705,17 +616,41 @@ shadow-engine/
 ├── pyproject.toml, LICENSE
 ├── docker/
 ├── .github/workflows/ci.yml
-├── scripts/     (test_multimodel_e2e.py, test_ollama_e2e.py, build_efficacy_data.py, ...)
+├── scripts/     (test_multimodel_e2e.py, test_ollama_e2e.py, build_efficacy_data.py, test_breakthrough_features.py)
 ├── src/shadow_engine/
 │   ├── main.py, observability.py
 │   ├── knowledge_graph/ (indexer.py, models.py, store.py)
 │   ├── sqlite_store/db.py, chroma_store/vector_store.py
-│   ├── laboratory/experiment.py, learning/engine.py
+│   ├── laboratory/ (experiment.py, debate.py)
+│   ├── learning/
+│   │   ├── engine.py, bayesian_predictor.py, diff_patterns.py
+│   │   ├── causal_engine.py, pr_simulator.py, temporal_anomaly.py
+│   │   ├── intervention_engine.py, strategy_evolution.py
+│   │   ├── speculative_context.py, transfer_store.py, context_budget.py
+│   │   ├── health_score.py, hot_zones.py, live_monitor.py, risk_gate.py
+│   │   └── ...
 │   ├── llm/providers.py, async_lab/executor.py
 │   ├── api_server/server.py, integrations/openinspect.py
+│   ├── utils/serialization.py
 │   └── redis_limiter/
-└── tests/ (7 test files, 155 tests)
+└── tests/ (7 test files, ~80 tests)
 ```
+
+---
+
+## Known Limitations
+
+This is an **actively developed technology preview**. The following limitations are being addressed:
+
+| # | Limitation | Impact | Mitigation |
+|---|-----------|--------|-----------|
+| 1 | **Regex-based indexing for non-Python languages** | Complex constructs (async functions, arrow functions, generics) may be missed in TS/JS/Go/Rust | Python uses AST already. Tree-sitter integration planned for other languages. |
+| 2 | **Small session datasets** | Causal engine needs ≥10 sessions; temporal anomaly detection needs ≥10; strategy evolution needs ≥20 for meaningful results | Modules degrade gracefully — return empty contexts or fallback values when data is insufficient. |
+| 3 | **No concurrent access testing for SQLite** | Multi-worker FastAPI deployments untested | SQLite WAL mode supports concurrent reads. PostgreSQL backend planned for scale. |
+| 4 | **Experimental engines need more validation** | Causal, debate, simulation, temporal, intervention, evolution, transfer engines are functional but not battle-tested | All pass 32 real-data tests. More session data improves accuracy. |
+| 5 | **ChromaDB requires sentence-transformers download** | First run downloads ~100MB model weights | Automatic; one-time cost. |
+| 6 | **Limited community validation** | Solo project; no external contributors or production deployments yet | MIT licensed; seeking early adopters and contributors. |
+| 7 | **No performance benchmarks** | Claims of "100K+ sessions" not yet validated with benchmarks | Reasonable for moderate scale based on SQLite WAL design. Benchmarks planned. |
 
 ---
 
@@ -731,10 +666,10 @@ A: Yes. Shadow Engineer works with any background agent via its REST API or CLI.
 A: No. ChromaDB uses CPU embeddings by default.
 
 **Q: What scale does this support?**
-A: SQLite WAL mode supports 100K+ sessions. PostgreSQL backend planned for larger scale.
+A: SQLite WAL mode supports moderate scale. PostgreSQL backend planned for larger deployments.
 
 **Q: Is this ready for production?**
-A: Production-ready for internal team deployment. See [ROADMAP.md](ROADMAP.md) for GA timeline.
+A: Shadow Engineer is a **Technology Preview (Alpha)**. It is suitable for evaluation, prototyping, and contributing to. The core learning loop, knowledge graph, and API server are functional and tested. The experimental AI engines improve with more session data and community feedback. See [Known Limitations](#known-limitations).
 
 ---
 
