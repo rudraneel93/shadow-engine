@@ -91,7 +91,7 @@ class PatternMerger:
                         confidence=min(1.0, new_confidence + 0.05),  # Small merge bonus
                     )
 
-                    merged_ids.add(discarding_id := discarding.get("id", ""))
+                    merged_ids.add(discarding.get("id", ""))
                     merged_count += 1
 
         return merged_count

@@ -80,7 +80,6 @@ class HealthScorer:
         # 4. Compute overall
         overall = int((hz_score * 0.3) + (failure_score * 0.4) + (trend_score * 0.3))
 
-        import math
         return {
             "overall_score": overall,
             "hot_zone_score": hz_score,
