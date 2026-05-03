@@ -24,6 +24,9 @@ from .learning.code_diff_analyzer import CodeDiffAnalyzer
 from .learning.live_monitor import LiveMonitor
 from .learning.codebase_qa import CodebaseQA
 from .learning.hot_zones import HotZoneDetector
+from .learning.session_replay import SessionReplay
+from .learning.health_score import HealthScorer
+from .learning.risk_gate import RiskGate
 from .observability import (
     log_bootstrap, record_bootstrap, record_search, record_session, record_context,
 )
@@ -81,6 +84,9 @@ class ShadowEngine:
         self.live_monitor = LiveMonitor(self.store)
         self.qa = CodebaseQA(self.store, self._chroma)
         self.hot_zones = HotZoneDetector(self.store, self._chroma)
+        self.replay = SessionReplay(self.store)
+        self.health_scorer = HealthScorer(self.store, self.hot_zones)
+        self.risk_gate = RiskGate(self.store, self.live_monitor, self.hot_zones)
 
         # Fix #5: Metrics derived from DB (survives restarts)
         self._metrics: dict[str, Any] = {
