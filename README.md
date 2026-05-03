@@ -58,12 +58,14 @@ Shadow Engineer doesn't just dump your codebase into a prompt. It provides **met
 ### Problem Classification
 - **Type**: bug_fix (confidence: 0.95)
 - **Recommended Approach**: Targeted Fix
-- **Expected Success Rate**: 80%*
-- **Best Model**: qwen3:8b
+- **Expected Success Rate**: 100% (4/4 attempts)
+- **Last Successful Model**: qwen3:8b
 
 ### Historical Insight
-- Based on 5 previous attempts, 'Targeted Fix' succeeds 80% of the time. Best result with qwen3:8b.
-*Efficacy rates from 18 ingested sessions — limited sample.
+- Targeted Fix for bug_fix: 4/4 succeeded (100%). Avoid Aggressive Rewrite — 0/1 succeeded for bug_fix.
+- TDD First for testing: 3/3 succeeded (100%). Avoid Full Coverage — 0/1 succeeded.
+- Extensible Implementation for feature: 3/3 succeeded (100%). Avoid Clean Sweep — 0/1 succeeded.
+*Rates from 18 ingested sessions. Small sample — more sessions increase confidence.
 
 ### Knowledge Graph Context
 #### Semantically Relevant Symbols
@@ -75,10 +77,12 @@ Shadow Engineer doesn't just dump your codebase into a prompt. It provides **met
 
 | Problem Type | Best Approach | Success Rate* | Last Successful Model |
 |-------------|--------------|-------------|-----------------------|
-| bug_fix | Targeted Fix | 80% (4/5) | qwen3:8b |
-| feature | Extensible Implementation | 75% (3/4) | qwen3:8b |
-| testing | TDD First | 75% (3/4) | qwen3:8b |
-| refactor | Incremental Rewrite | 75% (3/4) | qwen3:8b |
+| bug_fix | Targeted Fix | 100% (4/4) | qwen3:8b |
+| feature | Extensible Implementation | 100% (3/3) | qwen3:8b |
+| testing | TDD First | 100% (3/3) | qwen3:8b |
+| refactor | Incremental Rewrite | 100% (3/3) | qwen3:8b |
+| bug_fix (avoid) | Aggressive Rewrite | 0% (0/1) | — |
+| feature (avoid) | Clean Sweep | 0% (0/1) | — |
 
 \* *Rates from 18 ingested sessions. Small sample — more sessions increase confidence.*
 
@@ -276,11 +280,11 @@ Output (injects into agent prompts):
 ### Problem Classification
 - **Type**: bug_fix (confidence: 0.95)
 - **Recommended Approach**: Targeted Fix
-- **Expected Success Rate**: 80%
-- **Best Model**: qwen3:8b
+- **Expected Success Rate**: 100% (4/4 attempts)
+- **Last Successful Model**: qwen3:8b
 
 ### Historical Insight
-- Based on 5 previous attempts, 'Targeted Fix' succeeds 80% of the time.
+- Targeted Fix for bug_fix: 4/4 succeeded (100%). The one Aggressive Rewrite attempt failed.
 
 ### Knowledge Graph Context
 #### Semantically Relevant Symbols
@@ -319,8 +323,8 @@ Output:
   "problem_type": "feature",
   "classification_confidence": 0.70,
   "recommended_approach": "Extensible Implementation",
-  "expected_success_rate": 0.75,
-  "best_model": "qwen3:8b"
+  "expected_success_rate": 1.0,
+  "last_successful_model": "qwen3:8b"
 }
 ```
 
