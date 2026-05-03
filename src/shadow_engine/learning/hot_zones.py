@@ -137,9 +137,9 @@ class HotZoneDetector:
             if fail_rate >= 0.5:
                 failure_mode = f"High failure rate — {fail_count}/{mod_count} sessions failed when modifying this file"
             elif fail_rate >= 0.2:
-                failure_mode = f"Moderate failure rate — verify tests pass before committing"
+                failure_mode = "Moderate failure rate — verify tests pass before committing"
             else:
-                failure_mode = f"Low failure rate — standard testing should suffice"
+                failure_mode = "Low failure rate — standard testing should suffice"
 
             hot_zones.append({
                 "file_path": file_path,
