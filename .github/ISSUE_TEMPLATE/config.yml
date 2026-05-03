@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/rudraneel93/shadow-engine#readme
+    about: Read the comprehensive README for installation, API docs, and examples
+  - name: API Reference
+    url: https://github.com/rudraneel93/shadow-engine/blob/main/API_DOCS.md
+    about: Full REST API documentation with request/response schemas
+  - name: Research Report
+    url: https://github.com/rudraneel93/shadow-engine/blob/main/FINDINGS_REPORT.md
+    about: Efficiency analysis, competitive comparison, and architecture assessment
