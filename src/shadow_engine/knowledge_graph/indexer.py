@@ -12,7 +12,6 @@ from .models import FileSummary, Symbol, SymbolKind
 
 
 # Pre-compiled regex patterns grouped by file extension
-# Fix #2: Patterns are compiled once at module load time, not per-line
 _COMPILED_PATTERNS: dict[str, list[tuple[re.Pattern[str], SymbolKind]]] = {
     ".py": [
         (re.compile(r"^def\s+(\w+)\s*\(([^)]*)\)\s*(?:->\s*(\S+))?\s*:"), SymbolKind.FUNCTION),
@@ -56,7 +55,6 @@ _COMPILED_PATTERNS: dict[str, list[tuple[re.Pattern[str], SymbolKind]]] = {
     ],
 }
 
-# Import detection regex — handles various import forms
 _IMPORT_RE = re.compile(r"^\s*(?:from\s+(\S+)\s+import\s+(.+)|import\s+(\S+)(?:\s+as\s+(\S+))?)")
 
 SUPPORTED_EXTENSIONS = frozenset(_COMPILED_PATTERNS.keys())
@@ -94,8 +92,8 @@ class CodebaseIndexer:
         self._files.clear()
         for file_path in self._walk_files():
             self._index_file(file_path)
-        # Fix #8: Actually resolve dependencies now
-        self._resolve_dependencies()
+        self._resolve_cross_file_dependencies()
+        self._resolve_same_file_dependencies()
         return self.symbols, self.files
 
     def index_file(self, relative_path: str) -> FileSummary | None:
@@ -165,51 +163,38 @@ class CodebaseIndexer:
                     self._symbols[symbol.id] = symbol
                     file_summary.symbols.append(symbol.id)
 
-                    # Track imports for dependency resolution
                     im = _IMPORT_RE.match(line)
                     if im:
-                        from_module = im.group(1)  # "from X import Y" → X
-                        import_targets = im.group(2)  # "from X import Y, Z" → "Y, Z"
-                        import_module = im.group(3)  # "import X" → X
+                        from_module = im.group(1)
+                        import_targets = im.group(2)
+                        import_module = im.group(3)
                         if from_module and import_targets:
-                            # Handle "from X import Y, Z" and "from X import *"
                             targets = import_targets.strip()
                             if targets == "*":
-                                # Star import — resolve to the entire module
                                 file_summary.imports.append(f"*:{from_module}")
                             else:
                                 for target in targets.split(","):
                                     target = target.strip()
-                                    # Handle "from X import Y as Z" — use Y (the actual symbol)
                                     if " as " in target:
                                         target = target.split(" as ")[0].strip()
                                     file_summary.imports.append(target)
                         elif import_module:
-                            # Handle "import X" or "import X as Y"
-                            # Store the imported module name, not the alias
                             file_summary.imports.append(import_module.strip())
                         elif from_module:
-                            # "from X import ..." without specific targets
                             file_summary.imports.append(from_module.strip())
                     break
 
         self._files[relative] = file_summary
         return file_summary
 
-    # Fix #5: Cross-file dependency resolution with relative import support
-    def _resolve_dependencies(self) -> None:
-        """Resolve cross-file symbol dependencies.
+    # ── Cross-File Dependencies ──────────────────────────────────
 
-        Handles absolute imports ('import auth.service'), relative imports
-        ('from . import models', 'from ..utils import helpers'), and
-        symbol-name references across files.
-        """
-        # Build name → IDs lookup
+    def _resolve_cross_file_dependencies(self) -> None:
+        """Resolve cross-file symbol dependencies via imports."""
         name_to_ids: dict[str, list[str]] = {}
         for sym_id, sym in self._symbols.items():
             name_to_ids.setdefault(sym.name, []).append(sym_id)
 
-        # Index symbols by module path (without extension) for import resolution
         module_to_symbols: dict[str, list[str]] = {}
         for sym_id, sym in self._symbols.items():
             module = sym.file_path.replace("/", ".").replace("\\", ".")
@@ -219,11 +204,8 @@ class CodebaseIndexer:
                     break
             module_to_symbols.setdefault(module, []).append(sym_id)
 
-        # For each file, resolve imports to actual symbol dependencies
         for file_path, file_summary in self._files.items():
             file_symbol_ids = set(file_summary.symbols)
-
-            # Determine this file's module path
             file_module = file_path.replace("/", ".").replace("\\", ".")
             for ext in SUPPORTED_EXTENSIONS:
                 if file_module.endswith(ext):
@@ -240,7 +222,6 @@ class CodebaseIndexer:
                                 if dep_id != sym_id and dep_id not in sym.dependencies:
                                     sym.dependencies.append(dep_id)
                 elif imp and not imp.startswith(".") and not imp.startswith("*:") and imp in name_to_ids:
-                    # Direct symbol name reference (from "from module import ClassA")
                     for sym_id in file_symbol_ids:
                         if sym_id in self._symbols:
                             sym = self._symbols[sym_id]
@@ -248,48 +229,76 @@ class CodebaseIndexer:
                                 if dep_id != sym_id and dep_id not in sym.dependencies:
                                     sym.dependencies.append(dep_id)
 
-    def _resolve_import_target(self, imp_stmt: str, current_module: str) -> str | None:
-        """Resolve an import statement to a module path.
+    # ── Same-File Dependencies ───────────────────────────────────
 
-        Handles:
-        - 'auth.service' → 'auth.service' (absolute)
-        - '.models' → resolve relative from current_module
-        - '..utils' → resolve relative from parent of current_module
-        - '*:module' → resolved module path (star imports)
+    def _resolve_same_file_dependencies(self) -> None:
+        """Resolve same-file symbol dependencies.
 
-        Returns the resolved module path, or None if unresolvable.
+        For each file, scan the body of each symbol for references to
+        other known symbols in the SAME file. When function A calls
+        function B in the same file, add a dependency edge A → B.
+
+        This was previously untracked — only cross-file imports were resolved.
         """
-        target = imp_stmt.strip()
+        name_to_sym: dict[str, str] = {}
+        for sym_id, sym in self._symbols.items():
+            name_to_sym[sym.name] = sym_id
 
-        # Star imports: extract the module after the colon
+        for file_path, file_summary in self._files.items():
+            try:
+                content = (self.root / file_path).read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+            lines = content.split("\n")
+
+            # For each symbol in this file, scan its body for references
+            # to other symbols also in this file
+            file_sym_ids = set(file_summary.symbols)
+            for sym_id in file_sym_ids:
+                if sym_id not in self._symbols:
+                    continue
+                sym = self._symbols[sym_id]
+                start = sym.line_start - 1
+                end = min(sym.line_end, len(lines))
+                body = "\n".join(lines[start:end])
+
+                # Check if any other same-file symbol name appears in this body
+                for other_id in file_sym_ids:
+                    if other_id == sym_id:
+                        continue
+                    other_sym = self._symbols[other_id]
+                    # Use word-boundary check to avoid partial matches
+                    if re.search(rf"\b{re.escape(other_sym.name)}\b", body):
+                        if other_id not in sym.dependencies:
+                            sym.dependencies.append(other_id)
+
+    # ── Import Target Resolution ─────────────────────────────────
+
+    def _resolve_import_target(self, imp_stmt: str, current_module: str) -> str | None:
+        target = imp_stmt.strip()
         if target.startswith("*:"):
             module_name = target[2:]
             return self._resolve_import_target(module_name, current_module)
-
-        # Absolute import (no leading dots)
         if not target.startswith("."):
             return target
-
-        # Relative import — count dots and resolve from current_module
         dots = 0
         i = 0
         while i < len(target) and target[i] == ".":
             dots += 1
             i += 1
         relative_path = target[i:]
-
         parts = current_module.split(".")
         if len(parts) >= dots:
             base_parts = parts[:-dots] if dots > 0 else parts
         else:
             return None
-
         if relative_path:
             resolved = ".".join(base_parts + [relative_path]) if base_parts else relative_path
         else:
             resolved = ".".join(base_parts)
-
         return resolved or None
+
+    # ── Helpers ──────────────────────────────────────────────────
 
     @staticmethod
     def _extract_docstring(lines: list[str], start_idx: int, language: str) -> str:
@@ -298,7 +307,6 @@ class CodebaseIndexer:
         if idx >= len(lines):
             return ""
         line = lines[idx].strip()
-
         if language == ".py" and (line.startswith('"""') or line.startswith("'''")):
             quote = line[:3]
             doc_lines.append(line[len(quote):])
@@ -342,7 +350,6 @@ class CodebaseIndexer:
                 else:
                     break
                 idx += 1
-
         return "\n".join(doc_lines).strip()
 
     @staticmethod
@@ -351,7 +358,6 @@ class CodebaseIndexer:
             return start_idx + 1
         start_line = lines[start_idx] if start_idx < len(lines) else ""
         base_indent = len(start_line) - len(start_line.lstrip())
-
         brace_langs = {".ts", ".tsx", ".js", ".jsx", ".go", ".rs"}
         if language in brace_langs:
             brace_count = 0
@@ -366,7 +372,6 @@ class CodebaseIndexer:
                 if found_open and brace_count == 0:
                     return i + 1
             return start_idx + 1
-
         idx = start_idx + 1
         while idx < len(lines):
             line = lines[idx]
