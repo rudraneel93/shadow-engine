@@ -1,7 +1,7 @@
 """FastAPI REST server for Shadow Engineer. Multi-repo, async-safe.
 
 Features: API key auth, Redis-backed rate limiting (fail-open),
-LRU engine registry, versioned API.
+LRU engine registry, versioned API, path sandboxing.
 
 Usage:
     uvicorn shadow_engine.api_server.server:app --reload
@@ -24,6 +24,27 @@ from pydantic import BaseModel, Field
 
 from ..main import ShadowEngine
 from ..redis_limiter import RedisRateLimiter
+
+
+# ── Path Sandboxing (Fix: path traversal protection) ──────────────
+
+_allowed_roots: list[Path] | None = None
+_raw_roots = os.environ.get("SHADOW_ENGINE_ALLOWED_ROOTS", "")
+if _raw_roots:
+    _allowed_roots = [Path(r.strip()).resolve() for r in _raw_roots.split(",") if r.strip()]
+
+
+def validate_repo_path(repo_path: str) -> Path:
+    """Validate and resolve a repository path. Raises 403 if outside allowed roots."""
+    resolved = Path(repo_path).resolve()
+    if _allowed_roots is not None:
+        if not any(str(resolved).startswith(str(root)) for root in _allowed_roots):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Repository path '{repo_path}' is not within allowed roots. "
+                       f"Allowed: {[str(r) for r in _allowed_roots]}",
+            )
+    return resolved
 
 
 # ── Rate Limiter (Redis-first with in-memory fallback) ───────────
@@ -87,7 +108,7 @@ _registry = EngineRegistry(max_size=32)
 
 
 def get_engine(repo: str = Query(".", description="Repository path")) -> ShadowEngine:
-    return _registry.get(repo)
+    return _registry.get(validate_repo_path(repo))
 
 
 # ── App ───────────────────────────────────────────────────────────
@@ -95,14 +116,14 @@ def get_engine(repo: str = Query(".", description="Repository path")) -> ShadowE
 app = FastAPI(
     title="Shadow Engineer API",
     description="Self-improving background agent with persistent knowledge graph and parallel experimentation",
-    version="1.0.0",
+    version="0.1.0",
 )
 
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next: Any):
     """Rate limit every API request. Health check is exempt."""
-    if request.url.path.endswith("/health"):
+    if request.url.path in ("/health", "/v1/health"):
         return await call_next(request)
     client_id = request.client.host if request.client else "unknown"
     if not _rate_limiter.is_allowed(client_id):
@@ -132,14 +153,15 @@ class StatsResponse(BaseModel):
     total_symbols: int; total_files: int; total_sessions: int; successful_sessions: int; overall_success_rate: float
 
 
-# ── Routes (Fix #1: Single router, mounted at root AND /v1 — zero duplication) ──
+# ── Routes ────────────────────────────────────────────────────────
 
 router = APIRouter()
 
 
 @router.post("/bootstrap", response_model=BootstrapResponse)
 async def bootstrap(repo: str = Query("."), _: None = Depends(verify_api_key)):
-    result = _registry.get(repo).bootstrap()
+    validated = validate_repo_path(repo)
+    result = _registry.get(validated).bootstrap()
     return BootstrapResponse(**result)
 
 
@@ -197,7 +219,7 @@ async def stats(engine: ShadowEngine = Depends(get_engine), _: None = Depends(ve
 
 @router.get("/health")
 async def health():
-    return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat(), "version": "1.0.0"}
+    return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat(), "version": "0.1.0"}
 
 
 @router.get("/metrics")
@@ -205,6 +227,6 @@ async def metrics(engine: ShadowEngine = Depends(get_engine), _: None = Depends(
     return engine.get_metrics()
 
 
-# Fix #1: Include same router at root AND /v1 — zero code duplication
+# Include same router at root AND /v1 — zero code duplication
 app.include_router(router)
 app.include_router(router, prefix="/v1")
