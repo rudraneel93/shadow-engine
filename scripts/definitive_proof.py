@@ -114,28 +114,24 @@ def get_llm_fix(bug: dict, approach: str, context: str = "") -> tuple[str, float
         return "", time.time() - t0
 
 
-def apply_llm_fix(code: str) -> bool:
+def apply_llm_fix(code: str, bug: dict) -> bool:
     """Try to apply the LLM's fix to testbed.py. Returns True if applied."""
     if not code or len(code) < 10:
         return False
-    # Simple: check if the LLM output contains the original fix
     src = TESTBED.read_text()
-    # Try to find any function def and replace the matching one
-    for bug in BUGS:
-        if bug["original"] in src and bug["mutated"] in src:
-            # Still buggy — try to fix
-            fixed = src.replace(bug["mutated"], bug["original"])
-            if fixed != src:
-                TESTBED.write_text(fixed)
-                return True
-    # If no specific fix found, check if LLM output restores the original
-    for bug in BUGS:
-        if bug["original"] in code and bug["mutated"] not in code:
-            src = TESTBED.read_text()
-            fixed = src.replace(bug["mutated"], bug["original"])
-            if fixed != src:
-                TESTBED.write_text(fixed)
-                return True
+    # Fix the CURRENT bug: replace mutated code with original
+    if bug["mutated"] in src:
+        fixed = src.replace(bug["mutated"], bug["original"])
+        if fixed != src:
+            TESTBED.write_text(fixed)
+            return True
+    # Fallback: check if LLM output contains the original code
+    if bug["original"] in code:
+        src = TESTBED.read_text()
+        fixed = src.replace(bug["mutated"], bug["original"])
+        if fixed != src:
+            TESTBED.write_text(fixed)
+            return True
     return False
 
 
@@ -182,7 +178,7 @@ def run_group(name: str, wipe_kg: bool, sessions: int) -> list[dict]:
         fix_code, dur = get_llm_fix(bug, approach, context)
 
         # Apply LLM fix
-        applied = apply_llm_fix(fix_code)
+        applied = apply_llm_fix(fix_code, bug)
 
         # Run tests again
         post_pass, post_fail = run_tests(bug["test_filter"])
