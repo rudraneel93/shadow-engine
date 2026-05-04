@@ -1,472 +1,417 @@
 {
-  "title": "Session 100 > Session 1 \u2014 Definitive Proof",
-  "models": [
-    "qwen3-coder:480b-cloud",
-    "qwen3:8b"
-  ],
-  "sessions": 40,
-  "overall_rate": 0.4,
+  "title": "Session 50 > Session 1 \u2014 Valid Proof",
+  "method": "Same model, same task, same tests, different approaches",
+  "model": "qwen3-coder:480b-cloud",
+  "task": "binary_search_rotated",
+  "tests": 7,
+  "sessions": 48,
+  "approaches_tested": 8,
+  "overall_rate": 0.8541666666666666,
   "patterns": 1,
-  "health": 76,
-  "per_model": {
-    "qwen3-coder:480b-cloud": 0.8,
-    "qwen3:8b": 0.0
-  },
+  "health": 94,
   "per_approach": {
-    "Targeted Fix": 0.3333333333333333,
-    "Root Cause + Guard": 0.3333333333333333,
-    "Extensible Implementation": 0.5,
-    "Incremental Rewrite": 0.3333333333333333,
-    "Safe Extract": 0.3333333333333333,
-    "Minimal Viable": 0.5,
-    "TDD First": 0.5
+    "Targeted Fix": 1.0,
+    "Root Cause + Guard": 0.8333333333333334,
+    "Extensible Implementation": 0.6666666666666666,
+    "Incremental Rewrite": 0.8333333333333334,
+    "Safe Extract": 0.6666666666666666,
+    "Minimal Viable": 0.8333333333333334,
+    "TDD First": 1.0,
+    "Aggressive Rewrite": 1.0
   },
+  "best_empirical": "Targeted Fix",
+  "engine_recommends": "TDD First",
+  "recommendation_converged": false,
   "compounding": {
-    "early_rate": 0.2,
-    "late_rate": 0.4,
-    "delta": 0.2
+    "pass_1_rate": 1.0,
+    "pass_last_rate": 0.625,
+    "delta": -0.375
   },
-  "verdict": "PROVEN",
+  "verdict": "DISPROVEN",
   "per_session": [
     {
       "session": 1,
-      "task": "is_palindrome",
-      "difficulty": "easy",
-      "model": "qwen3-coder:480b-cloud",
       "approach": "Targeted Fix",
-      "tests": "0/1",
-      "outcome": "failure",
-      "dur": 90.0,
-      "patterns": 0
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 18.7,
+      "patterns": 1
     },
     {
       "session": 2,
-      "task": "is_palindrome",
-      "difficulty": "easy",
-      "model": "qwen3:8b",
-      "approach": "Targeted Fix",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 33.0,
-      "patterns": 0
+      "approach": "Root Cause + Guard",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 37.0,
+      "patterns": 1
     },
     {
       "session": 3,
-      "task": "fibonacci",
-      "difficulty": "easy",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Root Cause + Guard",
-      "tests": "0/1",
-      "outcome": "failure",
-      "dur": 90.0,
-      "patterns": 0
+      "approach": "Extensible Implementation",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 20.9,
+      "patterns": 1
     },
     {
       "session": 4,
-      "task": "fibonacci",
-      "difficulty": "easy",
-      "model": "qwen3:8b",
-      "approach": "Root Cause + Guard",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 29.3,
-      "patterns": 0
+      "approach": "Incremental Rewrite",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 19.5,
+      "patterns": 1
     },
     {
       "session": 5,
-      "task": "flatten",
-      "difficulty": "medium",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Extensible Implementation",
-      "tests": "6/6",
+      "approach": "Safe Extract",
+      "tests": "7/7",
       "outcome": "success",
-      "dur": 68.0,
+      "dur": 44.2,
       "patterns": 1
     },
     {
       "session": 6,
-      "task": "flatten",
-      "difficulty": "medium",
-      "model": "qwen3:8b",
-      "approach": "Extensible Implementation",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.1,
-      "patterns": 0
-    },
-    {
-      "session": 7,
-      "task": "merge_intervals",
-      "difficulty": "medium",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Incremental Rewrite",
-      "tests": "6/6",
-      "outcome": "success",
-      "dur": 85.7,
-      "patterns": 1
-    },
-    {
-      "session": 8,
-      "task": "merge_intervals",
-      "difficulty": "medium",
-      "model": "qwen3:8b",
-      "approach": "Incremental Rewrite",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.4,
-      "patterns": 0
-    },
-    {
-      "session": 9,
-      "task": "binary_search",
-      "difficulty": "hard",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Safe Extract",
-      "tests": "0/1",
-      "outcome": "failure",
-      "dur": 90.0,
-      "patterns": 0
-    },
-    {
-      "session": 10,
-      "task": "binary_search",
-      "difficulty": "hard",
-      "model": "qwen3:8b",
-      "approach": "Safe Extract",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.5,
-      "patterns": 0
-    },
-    {
-      "session": 11,
-      "task": "is_palindrome",
-      "difficulty": "easy",
-      "model": "qwen3-coder:480b-cloud",
       "approach": "Minimal Viable",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 83.6,
+      "dur": 41.5,
       "patterns": 1
     },
     {
-      "session": 12,
-      "task": "is_palindrome",
-      "difficulty": "easy",
-      "model": "qwen3:8b",
-      "approach": "Minimal Viable",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.2,
-      "patterns": 0
-    },
-    {
-      "session": 13,
-      "task": "fibonacci",
-      "difficulty": "easy",
-      "model": "qwen3-coder:480b-cloud",
+      "session": 7,
       "approach": "TDD First",
-      "tests": "6/6",
-      "outcome": "success",
-      "dur": 74.5,
-      "patterns": 1
-    },
-    {
-      "session": 14,
-      "task": "fibonacci",
-      "difficulty": "easy",
-      "model": "qwen3:8b",
-      "approach": "TDD First",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.1,
-      "patterns": 0
-    },
-    {
-      "session": 15,
-      "task": "flatten",
-      "difficulty": "medium",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Targeted Fix",
-      "tests": "6/6",
-      "outcome": "success",
-      "dur": 61.3,
-      "patterns": 1
-    },
-    {
-      "session": 16,
-      "task": "flatten",
-      "difficulty": "medium",
-      "model": "qwen3:8b",
-      "approach": "Targeted Fix",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.3,
-      "patterns": 0
-    },
-    {
-      "session": 17,
-      "task": "merge_intervals",
-      "difficulty": "medium",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Root Cause + Guard",
-      "tests": "6/6",
-      "outcome": "success",
-      "dur": 82.8,
-      "patterns": 1
-    },
-    {
-      "session": 18,
-      "task": "merge_intervals",
-      "difficulty": "medium",
-      "model": "qwen3:8b",
-      "approach": "Root Cause + Guard",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.4,
-      "patterns": 0
-    },
-    {
-      "session": 19,
-      "task": "binary_search",
-      "difficulty": "hard",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Extensible Implementation",
-      "tests": "6/6",
-      "outcome": "success",
-      "dur": 73.1,
-      "patterns": 1
-    },
-    {
-      "session": 20,
-      "task": "binary_search",
-      "difficulty": "hard",
-      "model": "qwen3:8b",
-      "approach": "Extensible Implementation",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 29.1,
-      "patterns": 0
-    },
-    {
-      "session": 21,
-      "task": "is_palindrome",
-      "difficulty": "easy",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Incremental Rewrite",
       "tests": "7/7",
       "outcome": "success",
       "dur": 29.4,
       "patterns": 1
     },
     {
-      "session": 22,
-      "task": "is_palindrome",
-      "difficulty": "easy",
-      "model": "qwen3:8b",
-      "approach": "Incremental Rewrite",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.2,
-      "patterns": 0
-    },
-    {
-      "session": 23,
-      "task": "fibonacci",
-      "difficulty": "easy",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Safe Extract",
-      "tests": "6/6",
+      "session": 8,
+      "approach": "Aggressive Rewrite",
+      "tests": "7/7",
       "outcome": "success",
-      "dur": 48.1,
+      "dur": 31.6,
       "patterns": 1
     },
     {
-      "session": 24,
-      "task": "fibonacci",
-      "difficulty": "easy",
-      "model": "qwen3:8b",
-      "approach": "Safe Extract",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.1,
-      "patterns": 0
-    },
-    {
-      "session": 25,
-      "task": "flatten",
-      "difficulty": "medium",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Minimal Viable",
-      "tests": "6/6",
-      "outcome": "success",
-      "dur": 36.5,
-      "patterns": 1
-    },
-    {
-      "session": 26,
-      "task": "flatten",
-      "difficulty": "medium",
-      "model": "qwen3:8b",
-      "approach": "Minimal Viable",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.6,
-      "patterns": 0
-    },
-    {
-      "session": 27,
-      "task": "merge_intervals",
-      "difficulty": "medium",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "TDD First",
-      "tests": "6/6",
-      "outcome": "success",
-      "dur": 51.3,
-      "patterns": 1
-    },
-    {
-      "session": 28,
-      "task": "merge_intervals",
-      "difficulty": "medium",
-      "model": "qwen3:8b",
-      "approach": "TDD First",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.8,
-      "patterns": 0
-    },
-    {
-      "session": 29,
-      "task": "binary_search",
-      "difficulty": "hard",
-      "model": "qwen3-coder:480b-cloud",
+      "session": 9,
       "approach": "Targeted Fix",
-      "tests": "6/6",
+      "tests": "7/7",
       "outcome": "success",
-      "dur": 47.5,
+      "dur": 26.8,
       "patterns": 1
     },
     {
-      "session": 30,
-      "task": "binary_search",
-      "difficulty": "hard",
-      "model": "qwen3:8b",
-      "approach": "Targeted Fix",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.2,
-      "patterns": 0
-    },
-    {
-      "session": 31,
-      "task": "is_palindrome",
-      "difficulty": "easy",
-      "model": "qwen3-coder:480b-cloud",
+      "session": 10,
       "approach": "Root Cause + Guard",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 63.4,
+      "dur": 26.6,
       "patterns": 1
     },
     {
-      "session": 32,
-      "task": "is_palindrome",
-      "difficulty": "easy",
-      "model": "qwen3:8b",
-      "approach": "Root Cause + Guard",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.2,
-      "patterns": 0
-    },
-    {
-      "session": 33,
-      "task": "fibonacci",
-      "difficulty": "easy",
-      "model": "qwen3-coder:480b-cloud",
+      "session": 11,
       "approach": "Extensible Implementation",
-      "tests": "6/6",
+      "tests": "7/7",
       "outcome": "success",
-      "dur": 63.6,
+      "dur": 53.5,
       "patterns": 1
     },
     {
-      "session": 34,
-      "task": "fibonacci",
-      "difficulty": "easy",
-      "model": "qwen3:8b",
-      "approach": "Extensible Implementation",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 29.2,
-      "patterns": 0
+      "session": 12,
+      "approach": "Incremental Rewrite",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 68.9,
+      "patterns": 1
     },
     {
-      "session": 35,
-      "task": "flatten",
-      "difficulty": "medium",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Incremental Rewrite",
-      "tests": "0/1",
+      "session": 13,
+      "approach": "Safe Extract",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 68.2,
+      "patterns": 1
+    },
+    {
+      "session": 14,
+      "approach": "Minimal Viable",
+      "tests": "0/7",
       "outcome": "failure",
       "dur": 90.0,
       "patterns": 0
     },
     {
-      "session": 36,
-      "task": "flatten",
-      "difficulty": "medium",
-      "model": "qwen3:8b",
-      "approach": "Incremental Rewrite",
-      "tests": "0/0",
+      "session": 15,
+      "approach": "TDD First",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 70.4,
+      "patterns": 1
+    },
+    {
+      "session": 16,
+      "approach": "Aggressive Rewrite",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 75.5,
+      "patterns": 1
+    },
+    {
+      "session": 17,
+      "approach": "Targeted Fix",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 82.0,
+      "patterns": 1
+    },
+    {
+      "session": 18,
+      "approach": "Root Cause + Guard",
+      "tests": "0/7",
       "outcome": "failure",
-      "dur": 28.3,
+      "dur": 90.0,
       "patterns": 0
     },
     {
-      "session": 37,
-      "task": "merge_intervals",
-      "difficulty": "medium",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Safe Extract",
-      "tests": "6/6",
+      "session": 19,
+      "approach": "Extensible Implementation",
+      "tests": "0/7",
+      "outcome": "failure",
+      "dur": 90.0,
+      "patterns": 0
+    },
+    {
+      "session": 20,
+      "approach": "Incremental Rewrite",
+      "tests": "7/7",
       "outcome": "success",
-      "dur": 66.4,
+      "dur": 74.4,
+      "patterns": 1
+    },
+    {
+      "session": 21,
+      "approach": "Safe Extract",
+      "tests": "0/7",
+      "outcome": "failure",
+      "dur": 90.0,
+      "patterns": 0
+    },
+    {
+      "session": 22,
+      "approach": "Minimal Viable",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 61.3,
+      "patterns": 1
+    },
+    {
+      "session": 23,
+      "approach": "TDD First",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 53.4,
+      "patterns": 1
+    },
+    {
+      "session": 24,
+      "approach": "Aggressive Rewrite",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 26.0,
+      "patterns": 1
+    },
+    {
+      "session": 25,
+      "approach": "Targeted Fix",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 43.2,
+      "patterns": 1
+    },
+    {
+      "session": 26,
+      "approach": "Root Cause + Guard",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 19.5,
+      "patterns": 1
+    },
+    {
+      "session": 27,
+      "approach": "Extensible Implementation",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 49.1,
+      "patterns": 1
+    },
+    {
+      "session": 28,
+      "approach": "Incremental Rewrite",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 28.9,
+      "patterns": 1
+    },
+    {
+      "session": 29,
+      "approach": "Safe Extract",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 16.2,
+      "patterns": 1
+    },
+    {
+      "session": 30,
+      "approach": "Minimal Viable",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 19.8,
+      "patterns": 1
+    },
+    {
+      "session": 31,
+      "approach": "TDD First",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 18.5,
+      "patterns": 1
+    },
+    {
+      "session": 32,
+      "approach": "Aggressive Rewrite",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 13.2,
+      "patterns": 1
+    },
+    {
+      "session": 33,
+      "approach": "Targeted Fix",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 14.7,
+      "patterns": 1
+    },
+    {
+      "session": 34,
+      "approach": "Root Cause + Guard",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 27.1,
+      "patterns": 1
+    },
+    {
+      "session": 35,
+      "approach": "Extensible Implementation",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 45.1,
+      "patterns": 1
+    },
+    {
+      "session": 36,
+      "approach": "Incremental Rewrite",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 68.3,
+      "patterns": 1
+    },
+    {
+      "session": 37,
+      "approach": "Safe Extract",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 61.9,
       "patterns": 1
     },
     {
       "session": 38,
-      "task": "merge_intervals",
-      "difficulty": "medium",
-      "model": "qwen3:8b",
-      "approach": "Safe Extract",
-      "tests": "0/0",
-      "outcome": "failure",
-      "dur": 28.2,
-      "patterns": 0
+      "approach": "Minimal Viable",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 44.9,
+      "patterns": 1
     },
     {
       "session": 39,
-      "task": "binary_search",
-      "difficulty": "hard",
-      "model": "qwen3-coder:480b-cloud",
-      "approach": "Minimal Viable",
-      "tests": "6/6",
+      "approach": "TDD First",
+      "tests": "7/7",
       "outcome": "success",
-      "dur": 64.5,
+      "dur": 47.3,
       "patterns": 1
     },
     {
       "session": 40,
-      "task": "binary_search",
-      "difficulty": "hard",
-      "model": "qwen3:8b",
-      "approach": "Minimal Viable",
-      "tests": "0/0",
+      "approach": "Aggressive Rewrite",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 52.9,
+      "patterns": 1
+    },
+    {
+      "session": 41,
+      "approach": "Targeted Fix",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 87.1,
+      "patterns": 1
+    },
+    {
+      "session": 42,
+      "approach": "Root Cause + Guard",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 84.5,
+      "patterns": 1
+    },
+    {
+      "session": 43,
+      "approach": "Extensible Implementation",
+      "tests": "0/7",
       "outcome": "failure",
-      "dur": 28.3,
+      "dur": 90.0,
       "patterns": 0
+    },
+    {
+      "session": 44,
+      "approach": "Incremental Rewrite",
+      "tests": "0/7",
+      "outcome": "failure",
+      "dur": 90.0,
+      "patterns": 0
+    },
+    {
+      "session": 45,
+      "approach": "Safe Extract",
+      "tests": "0/7",
+      "outcome": "failure",
+      "dur": 90.0,
+      "patterns": 0
+    },
+    {
+      "session": 46,
+      "approach": "Minimal Viable",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 80.0,
+      "patterns": 1
+    },
+    {
+      "session": 47,
+      "approach": "TDD First",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 64.0,
+      "patterns": 1
+    },
+    {
+      "session": 48,
+      "approach": "Aggressive Rewrite",
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 64.3,
+      "patterns": 1
     }
   ]
 }
