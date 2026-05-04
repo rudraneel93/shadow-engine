@@ -54,9 +54,9 @@ class LearningEngine:
             "patterns_learned": [],
         }
 
-        if session.was_successful:
-            patterns = self._extract_patterns_from_session(session)
-            results["patterns_learned"] = [{"type": p.pattern_type, "description": p.description, "confidence": p.confidence} for p in patterns]
+        # Extract patterns from ALL sessions (not just successful ones)
+        patterns = self._extract_patterns_from_session(session)
+        results["patterns_learned"] = [{"type": p.pattern_type, "description": p.description, "confidence": p.confidence} for p in patterns]
 
         if not session.was_successful and session.outcome != AgentOutcome.ABANDONED:
             results["failure_analysis"] = self._analyze_failure(session)
@@ -105,7 +105,6 @@ class LearningEngine:
         lines.append("")
 
         if not best_approaches:
-            # Fix #3: Show partial data below threshold instead of "no data"
             all_approaches = self.store.get_best_approaches(min_attempts=1)
             if all_approaches:
                 lines.append("  (Showing all approaches — need ≥3 attempts for confident recommendations)")
@@ -171,24 +170,83 @@ class LearningEngine:
         return "general", 0.3
 
     def _extract_patterns_from_session(self, session: SessionRecord) -> list[CodePattern]:
+        """Extract patterns from EVERY session (not just successful ones).
+
+        Removed the files_changed gate and 100% test_pass gate.
+        Now extracts: approach_outcome (always), test_ratio, duration, change_scope.
+        """
         patterns: list[CodePattern] = []
-        if session.files_changed:
-            cf = session.files_changed
+        cf = session.files_changed or []
+        tr = session.test_results or {}
+        total = tr.get("total", 0)
+        passed = tr.get("passed", 0)
+        ratio = passed / total if total > 0 else 0
+        was_success = session.was_successful
+
+        # 1. ALWAYS: per-session approach-outcome pattern
+        short_approach = (session.approach or "default")[:60]
+        outcome_label = "PASS" if was_success else "FAIL"
+        patterns.append(self.store.learn_pattern(
+            "approach_outcome",
+            f"'{short_approach}' → {outcome_label} ({passed}/{total} tests, {session.duration_seconds:.0f}s)",
+            cf[:3] or [session.session_id],
+            session.session_id,
+            confidence=0.5 + 0.3 * ratio,
+        ))
+
+        # 2. Files-changed scope patterns (if files data exists)
+        if cf:
             test_files = [f for f in cf if "test" in f.lower() or f.endswith("_test.py") or ".test." in f]
             non_test = [f for f in cf if f not in test_files]
             if test_files and non_test:
-                patterns.append(self.store.learn_pattern("testing", f"Agent writes tests alongside code changes. Modified {len(non_test)} source files and {len(test_files)} test files.", cf[:5], session.session_id, 0.9))
-            if len(cf) <= 3 and len(non_test) <= 2:
-                patterns.append(self.store.learn_pattern("change_scope", "Successful sessions tend to modify few files. Targeted, minimal changes are more likely to succeed.", cf, session.session_id, 0.8))
-        if session.test_results:
-            total = session.test_results.get("total", 0)
-            passed = session.test_results.get("passed", 0)
-            if total > 0 and (passed / total) == 1.0:
-                patterns.append(self.store.learn_pattern("testing", "All tests pass on first attempt when changes are targeted and test coverage is maintained.", session.files_changed[:3], session.session_id, 0.7))
+                patterns.append(self.store.learn_pattern(
+                    "testing", f"Modified {len(non_test)} source + {len(test_files)} test files",
+                    cf[:5], session.session_id, 0.85))
+            if len(cf) <= 3:
+                patterns.append(self.store.learn_pattern(
+                    "change_scope", f"Small change scope ({len(cf)} files)",
+                    cf, session.session_id, 0.75 if was_success else 0.5))
+            elif len(cf) > 5:
+                patterns.append(self.store.learn_pattern(
+                    "change_scope", f"Broad change ({len(cf)} files) — may be over-engineering",
+                    cf, session.session_id, 0.6))
+
+        # 3. Continuous test-ratio patterns (not just 100%)
+        if total > 0:
+            if ratio >= 0.8:
+                patterns.append(self.store.learn_pattern(
+                    "high_coverage",
+                    f"High test pass rate ({ratio:.0%}) — strong signal",
+                    [], session.session_id, confidence=ratio))
+            elif ratio > 0:
+                patterns.append(self.store.learn_pattern(
+                    "moderate_coverage",
+                    f"Moderate test pass rate ({ratio:.0%})",
+                    [], session.session_id, confidence=ratio))
+            if ratio < 0.5 and total > 0:
+                patterns.append(self.store.learn_pattern(
+                    "low_coverage",
+                    f"Low test pass rate ({ratio:.0%}) — approach may be ineffective",
+                    [], session.session_id, confidence=1.0 - ratio))
+
+        # 4. Duration efficiency patterns
+        dur = session.duration_seconds
+        if dur > 0:
+            if dur < 30:
+                patterns.append(self.store.learn_pattern(
+                    "efficiency", f"Fast execution ({dur:.0f}s)", [], session.session_id, 0.6))
+            elif dur > 90:
+                patterns.append(self.store.learn_pattern(
+                    "efficiency", f"Slow execution ({dur:.0f}s)", [], session.session_id, 0.4))
+
+        # 5. Review quality patterns
         if session.review_comments:
-            negative = [c for c in session.review_comments if any(w in c.lower() for w in ("change", "fix", "revert", "wrong", "incorrect"))]
+            negative = [c for c in session.review_comments
+                        if any(w in c.lower() for w in ("change", "fix", "revert", "wrong", "incorrect"))]
             if not negative:
-                patterns.append(self.store.learn_pattern("code_quality", "Clean PRs with no requested changes follow existing codebase conventions closely.", session.files_changed[:3], session.session_id, 0.75))
+                patterns.append(self.store.learn_pattern(
+                    "code_quality", "Clean code review — no changes requested",
+                    [], session.session_id, 0.75))
         return patterns
 
     @staticmethod
