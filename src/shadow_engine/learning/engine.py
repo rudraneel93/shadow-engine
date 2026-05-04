@@ -142,13 +142,34 @@ class LearningEngine:
                 "recommended_approach": "Use a balanced approach following existing codebase conventions.",
                 "confidence": 0.0,
             }
-        top = best_approaches[0]
+
+        # Composite ranking: success (30%) + speed (70%) when rates are similar
+        max_dur = max((a.avg_duration_seconds for a in best_approaches if a.avg_duration_seconds > 0), default=1)
+        ranked = sorted(best_approaches, key=lambda a:
+            a.success_rate * 0.3 +
+            (1.0 - min(a.avg_duration_seconds / max(max_dur, 1), 0.99)) * 0.7,
+            reverse=True)
+
+        top = ranked[0]
+        second = ranked[1] if len(ranked) > 1 else None
+        composite = round(top.success_rate * 0.3 + (1.0 - min(top.avg_duration_seconds / max(max_dur, 1), 0.99)) * 0.7, 3)
+
         return {
             "problem_type": problem_type, "classification_confidence": class_confidence,
             "suggestion": "historical_best", "recommended_approach": top.approach,
             "expected_success_rate": top.success_rate, "best_model": top.best_model,
+            "composite_score": composite,
+            "avg_duration_seconds": top.avg_duration_seconds,
+            "alternatives": [a.approach for a in ranked[:3]],
             "confidence": min(1.0, top.success_rate * (top.total_attempts / 10)),
-            "evidence": f"Based on {top.total_attempts} previous attempts, this approach succeeds {top.success_rate:.0%} of the time with model {top.best_model}.",
+            "evidence": (
+                f"'{top.approach}' scores {top.success_rate:.0%} success "
+                f"({top.avg_duration_seconds:.0f}s avg) vs "
+                f"{second.approach if second else 'unknown'} at "
+                f"{second.success_rate:.0%} ({second.avg_duration_seconds:.0f}s avg)"
+                if second
+                else f"Based on {top.total_attempts} attempts, '{top.approach}' succeeds {top.success_rate:.0%} of the time."
+            ),
         }
 
     _CLASSIFICATION_RULES: list[tuple[tuple[str, ...], str, float]] = [
