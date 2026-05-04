@@ -5,6 +5,8 @@
   </p>
   <p align="center">
     <a href="https://github.com/rudraneel93/shadow-engine/actions"><img src="https://img.shields.io/badge/CI-passing-brightgreen" alt="CI"></a>
+    <a href="https://github.com/rudraneel93/shadow-engine/actions"><img src="https://img.shields.io/badge/tests-241-brightgreen" alt="Tests"></a>
+    <a href="https://github.com/rudraneel93/shadow-engine/actions"><img src="https://img.shields.io/badge/coverage-≥60%25-yellow" alt="Coverage"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
     <a href="https://pypi.org/project/shadow-engine"><img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python"></a>
     <a href="https://github.com/rudraneel93/shadow-engine/blob/main/API_DOCS.md"><img src="https://img.shields.io/badge/docs-API_DOCS.md-orange" alt="Docs"></a>
@@ -13,31 +15,54 @@
 
 ---
 
-> **Status: Technology Preview (Alpha)** — Actively developed with real-data validation. See [Known Limitations](#known-limitations) and [Roadmap](ROADMAP.md).
+> **Status: Alpha → Strong Beta Candidate** — 241 tests passing with CI coverage enforcement (≥60%). See [Known Limitations](#known-limitations) and [Roadmap](ROADMAP.md).
 
 > **No existing background agent framework does this.** Every agent today (Ramp's Inspect, Open-Inspect, Copilot, Claude Code) treats every session as a blank slate. Session 100 is no smarter than Session 1. Shadow Engineer remembers — and gets smarter with every session.
 
 ---
 
-## 📊 Verified Against Real Data
+## 📊 Verified Test Results
 
-Shadow Engineer is tested against its own codebase (dogfooding) using **real session data** stored in SQLite — no mocks, no simulations:
+Shadow Engineer is tested against its own codebase (dogfooding) using **real SQLite session data** and **50 synthetic sessions** for operational validation:
 
-| Test Suite | Tests | Result |
-|-----------|-------|--------|
-| **Core Learning Features** (causal, simulation, temporal, intervention, debate, strategy evolution) | 32 | **100% pass** |
-| **Existing Unit Tests** (knowledge graph, learning engine, laboratory, API, async) | ~80 | **All passing** |
-| **Ruff Lint** | — | **All checks passed** |
+| Test Suite | Tests | Result | Description |
+|-----------|-------|--------|-------------|
+| **Experimental Engines** (causal, debate, simulation, temporal, intervention, strategy evolution) | 36 | **100% pass** | Includes 6 operational validation tests against 50 sessions with known causal relationships |
+| **API Integration** (full workflow + security) | 14 | **100% pass** | bootstrap→context→search→suggest→experiment→ingest→report + auth/path traversal |
+| **LLM Providers** (mocked HTTP) | 20 | **100% pass** | Ollama, OpenAI, Anthropic — success paths, auth errors, rate limits, timeouts |
+| **Sandbox Execution** (adversarial) | 16 | **100% pass** | Infinite loops, memory limits, syntax errors, null bytes, Unicode bidi, eval/exec detection |
+| **Knowledge Graph** (incl. Go/Rust tree-sitter) | 33 | **100% pass** | Symbol extraction, dependency resolution, impact analysis, CRUD |
+| **Learning, API, Async, Redis** | 122 | **100% pass** | Session ingestion, pattern extraction, efficacy tracking, rate limiting |
+| **Total** | **241** | **100% pass** | CI enforces ≥60% coverage with `--cov-fail-under=60` |
+| **Docker Sandbox** | 10/10 | **Verified** | Network isolation, read-only FS, tmpfs, memory cgroups, PID limits, capability drop |
+| **Ruff Lint** | — | **All checks passed** | Zero lint errors across entire codebase |
 
-Tested against a real database with 211 symbols across 26 files, 5 sessions, 92 fix patterns, and 3 learned patterns.
-
-> Reproduce: `python scripts/test_breakthrough_features.py`
-> Existing tests: `pytest tests/`
+> Reproduce: `pytest tests/ -v`
+> Sandbox: `bash scripts/test_docker_sandbox.sh`
 > Lint: `ruff check src/`
 
 ---
 
-## 🔬 Advanced Learning Pipeline (v0.9.0)
+## 🧪 Docker Sandbox Infrastructure
+
+Shadow Engineer includes a full Docker-based sandbox for safe Laboratory code execution:
+
+| Feature | Implementation |
+|---------|---------------|
+| **Network Isolation** | `--network=none` — no external access |
+| **Filesystem Protection** | `--read-only` root filesystem, writable `/tmp` via tmpfs |
+| **Memory Limits** | Docker cgroups with `--memory=128m` |
+| **PID Limits** | `--pids-limit=50` — prevents fork bombs |
+| **Capability Drop** | `--cap-drop=ALL` — minimal privileges |
+| **Container Timeout** | `--timeout` flag for execution time limits |
+| **Adversarial Testing** | Null bytes, Unicode bidi, very long lines, eval/exec detection |
+
+> Run sandbox tests: `bash scripts/test_docker_sandbox.sh`
+> Docker Compose integration: `docker compose -f docker/docker-compose.test.yml up -d`
+
+---
+
+## 🔬 Advanced Learning Pipeline
 
 Every context block includes multiple layers of intelligence before the knowledge graph:
 
@@ -57,22 +82,25 @@ Every context block includes multiple layers of intelligence before the knowledg
 ### Proven Fix Patterns (deduplicated)
 - Recurring patterns from successful sessions, merged via Jaccard similarity
 
-### Proven Code-Level Fix Patterns
+### Code-Level Fix Patterns
 - Extracted from real git diff history
 
 ### Test Risk by File
-- "test_rate_limit.py fails 85% of the time when rate_limiter.py changes"
+- Per-file test failure correlation across sessions
 
 ### Risk Assessment (Bayesian)
 - Beta-Binomial posterior with 95% credible intervals
 - Shrinkage toward prior prevents overconfidence on small samples
 
 ### Temporal Anomaly Detection
-- Bayesian Online Changepoint Detection (BOCD) for detecting performance shifts
-- Health score forecasting with linear trend analysis
+- Bayesian Online Changepoint Detection (BOCD)
+- Health score forecasting with linear regression
 
 ### PR Outcome Simulation
-- Monte Carlo simulation of test breakage, review rejection, and rework probability
+- Monte Carlo simulation of test breakage, review rejection, and rework
+
+### Multi-Agent Debate
+- Variant peer review with consensus synthesis
 
 ### Knowledge Graph Context
 - Semantically relevant symbols via ChromaDB embeddings
@@ -80,41 +108,39 @@ Every context block includes multiple layers of intelligence before the knowledg
 
 ---
 
-## 🧪 Experimental AI Engines (v0.10.0)
+## 🧪 Experimental AI Engines
 
-All verified against real shadow-engine session data. These modules are functional but should be considered experimental — they improve with more session data.
+All verified against 50 synthetic sessions with known causal relationships (Targeted Fix = ~90% success, Aggressive Rewrite = ~20% success). Feature-flagged behind `SHADOW_EXPERIMENTAL=1`.
 
-| Engine | What It Does | Data Needs |
-|--------|-------------|------------|
-| **Causal Reasoning** | Structural Causal Models (SCM) with do-calculus — answers "WHY does this approach work?" and counterfactuals | 10+ sessions |
-| **Multi-Agent Debate** | Variants critique each other on correctness, completeness, test coverage, simplicity, safety; synthesis generation | 2+ variants |
-| **PR Outcome Simulator** | Monte Carlo simulation predicting test breakage, review rejection, and rework probability before commit | 5+ sessions |
-| **Temporal Anomaly Detection** | BOCD changepoint detection, Z-score spike detection, health score forecasting with linear regression | 10+ sessions |
-| **Intervention Engine** | WARN→INTERVENE→ABORT→ESCALATE ladder with configurable risk thresholds | 5+ sessions |
-| **Strategy Evolution** | Genetic algorithms (mutation, crossover, selection) evolve optimal strategy templates over time | 20+ sessions |
-| **Speculative Context** | LRU-cached background pre-computation of agent context with TTL eviction | Any |
-| **Cross-Repo Transfer** | Pattern abstraction (strip file paths, generalize symbols) for federated learning across repositories | 10+ sessions |
+| Engine | What It Does | Validated With | Key Finding |
+|--------|-------------|---------------|-------------|
+| **Causal Reasoning** | Structural Causal Models (SCM) with do-calculus — answers counterfactuals | 50 sessions | ATE > 0 (positive causal effect for Targeted Fix) |
+| **Multi-Agent Debate** | Variants critique each other, synthesize consensus solutions | 5 variants | Synthesis generation works with diverse inputs |
+| **PR Outcome Simulator** | Monte Carlo simulation of test breakage, review rejection, rework | 50 sessions | Risky files score higher than safe files |
+| **Temporal Anomaly** | BOCD changepoint detection, Z-score spikes, health forecasting | 50 observations | Expected rate correctly tracked |
+| **Intervention Engine** | WARN→INTERVENE→ABORT→ESCALATE ladder | Real files | Risk assessment functional |
+| **Strategy Evolution** | Genetic algorithms evolve optimal strategies | 2 generations | Best strategy favors successful approaches |
+| **Speculative Context** | LRU-cached pre-computation with TTL eviction | Any | Cache hit/miss + queue processing verified |
+| **Cross-Repo Transfer** | Pattern abstraction for federated learning | 1+ repos | Pattern generalization works |
 
-> Test all engines: `python scripts/test_breakthrough_features.py`
+> Test all engines: `pytest tests/test_experimental_engines.py -v`
 
 ---
 
 ## 🏗️ Core Features
 
-| Feature | What It Does | Status |
-|---------|-------------|--------|
-| **Diff Pattern Extraction** | Parses git history to find recurring fix patterns (null_guard, error_handling, type_annotation) | ✅ |
-| **Bayesian Impact Prediction** | Beta-Binomial P(failure \| file) with 95% CI — not simple ratios | ✅ |
-| **Per-Test Risk Correlation** | Maps files to specific test failure rates across sessions | ✅ |
-| **Pattern Similarity Merging** | Jaccard deduplication prevents pattern fragmentation | ✅ |
-| **Code-Level Fix Patterns** | Answers "what code should I write?" with real examples | ✅ |
-| **Live Session Monitoring** | Real-time file risk warnings during coding sessions | ✅ |
-| **Natural Language Q&A** | Answers English questions about the codebase (7 question types) | ✅ |
-| **Hot Zone Detection** | Weighted scoring identifies files causing disproportionate failures | ✅ |
-| **Session Replay** | Finds semantically similar past sessions using Jaccard similarity | ✅ |
-| **Codebase Health Score** | Single 0-100 metric from hot zones, failure rates, and risk trends | ✅ |
-| **Pre-Commit Risk Gate** | Combined risk score from file history, approach efficacy, and dependency fanout | ✅ |
-| **Context Budget Manager** | Token-budget-aware context builder prevents model context overflow | ✅ |
+| Feature | What It Does | Implementation |
+|---------|-------------|---------------|
+| **Tree-Sitter Indexing** | Accurate AST parsing for TS/JS/Go/Rust (Python uses `ast.parse()`) | `knowledge_graph/indexer.py` |
+| **Bayesian Impact Prediction** | Beta-Binomial P(failure \| file) with 95% CI | `learning/bayesian_predictor.py` |
+| **Pattern Similarity Merging** | Jaccard deduplication prevents pattern fragmentation | `learning/pattern_merger.py` |
+| **Hot Zone Detection** | Weighted scoring for files causing disproportionate failures | `learning/hot_zones.py` |
+| **Codebase Health Score** | Single 0-100 metric from hot zones, failure rates, risk trends | `learning/health_score.py` |
+| **Context Budget Manager** | Token-budget-aware builder prevents model overflow | `learning/context_budget.py` |
+| **Graceful Error Handling** | @graceful decorator + CircuitBreaker for LLM calls | `learning/graceful.py` |
+| **LLM Provider Abstraction** | Ollama (HTTP API), OpenAI, Anthropic with structured error handling | `llm/providers.py` |
+| **Centralized Serialization** | JSON helpers with atomic writes | `utils/serialization.py` |
+| **Experimental Feature-Flag** | `SHADOW_EXPERIMENTAL=1` gates optional engines | `learning/experimental.py` |
 
 ---
 
@@ -127,7 +153,7 @@ All verified against real shadow-engine session data. These modules are function
 5. [Quick Start (CLI)](#quick-start-cli)
 6. [REST API Integration](#rest-api-integration)
 7. [Python SDK](#python-sdk)
-8. [Open-Inspect Integration](#open-inspect-integration)
+8. [Docker Sandbox](#docker-sandbox)
 9. [Deployment](#deployment)
 10. [Configuration Reference](#configuration-reference)
 11. [Supported Languages](#supported-languages)
@@ -140,39 +166,24 @@ All verified against real shadow-engine session data. These modules are function
 
 ## What Is Shadow Engineer?
 
-Shadow Engineer is a **learning layer** that sits on top of any background coding agent (Open-Inspect, Claude Code, custom agents). It provides three capabilities that no other framework offers:
+Shadow Engineer is a **learning layer** that sits on top of any background coding agent (Open-Inspect, Claude Code, custom agents). It provides three capabilities:
 
 | Engine | What It Does | Unique Value |
 |--------|-------------|--------------|
-| **Knowledge Graph** | Indexes your codebase into a persistent, searchable semantic graph | Agents start with informed context — no more fumbling through code |
-| **Laboratory** | Spawns N parallel agent sessions with different strategies and picks the winner | Not one attempt — choose from proven solutions |
-| **Learning Engine** | Analyzes every session to extract patterns, track efficacy, and suggest approaches | Session 100 is smarter than Session 1 — compounding intelligence |
-
-### The Compounding Effect
-
-```
-Session 1:   No context  | No patterns  | No approach data  | ~40% success rate (baseline)
-Session 10:  10 symbols  | 3 patterns   | 2 approaches      | ~55% success rate*
-Session 50:  50 symbols  | 8 patterns   | 5 approaches      | ~70% success rate*
-Session 200: 100+ symbols | 20+ patterns | 10+ approaches   | ~80% success rate*
-
-*Projected from efficacy tracking logic. Measured: 78% over 18 sessions.
-```
-
-**Every session makes the next one smarter.** This is the defensible advantage that no competitor ships.
+| **Knowledge Graph** | Indexes your codebase into a persistent, searchable semantic graph | Agents start with informed context |
+| **Laboratory** | Spawns N parallel agent experiments with different strategies | Choose from proven solutions |
+| **Learning Engine** | Analyzes every session to extract patterns, track efficacy, and suggest approaches | Session 100 is smarter than Session 1 |
 
 ---
 
 ## The Problem It Solves
 
-Current background coding agents treat every session independently:
-
 | Problem | Without Shadow Engineer | With Shadow Engineer |
 |---------|------------------------|---------------------|
-| **No memory** | Agent fumbles through codebase every time | Agent starts with relevant context from the knowledge graph |
-| **No learning** | Same mistakes repeated across sessions | Pattern extraction + efficacy tracking prevents repeat failures |
-| **Single attempt** | One approach, one model — if it fails, start over | N parallel experiments, winner picked automatically |
-| **No codebase understanding** | "What file handles authentication?" every session | Semantic search: "authentication" → `auth/service.py` |
+| **No memory** | Agent fumbles through codebase every time | Agent starts with relevant KG context |
+| **No learning** | Same mistakes repeated across sessions | Pattern extraction + efficacy tracking |
+| **Single attempt** | One approach — if it fails, start over | N parallel experiments, winner picked automatically |
+| **No understanding** | "What file handles auth?" every session | Semantic search: "authentication" → `auth/service.py` |
 
 ---
 
@@ -186,23 +197,23 @@ Current background coding agents treat every session independently:
          │           │  │  Knowledge   │  │    Laboratory    │  │
          ▼           │  │    Graph     │  │                  │  │
   ┌──────────┐       │  │              │  │  3 variants:     │  │
-  │ Classify │───────┼──│ • 211 symbols│  │  • Targeted Fix  │  │
-  │ problem  │       │  │ • 26 files   │  │  • Root Cause    │  │
-  └────┬─────┘       │  │ • 3 patterns │  │  • Defense Depth │  │
+  │ Classify │───────┼──│ • Tree-sitter│  │  • Targeted Fix  │  │
+  │ problem  │       │  │ • SQLite     │  │  • Root Cause    │  │
+  └────┬─────┘       │  │ • ChromaDB   │  │  • Defense Depth │  │
        │             │  └──────┬───────┘  └────────┬─────────┘  │
   ┌────▼─────┐       │         │                   │            │
   │  Build   │       │         │                   ▼            │
   │ context  │───────┼─────────┼──▶  Agent Prompt + Approach    │
-  └────┬─────┘       │         │                                │
-       │             │         │     ┌──────────────────┐       │
+  │ (budget) │       │         │                                │
+  └────┬─────┘       │         │     ┌──────────────────┐       │
        │             │         │     │     Learning     │       │
        ▼             │         │     │      Engine      │       │
   ┌──────────┐       │         │     │                  │       │
-  │  Agent   │       │         │     │ • Pattern extract│       │
-  │ executes │       │         └─────│ • Efficacy track │       │
-  │  task    │       │               │ • Failure analyze│       │
-  └────┬─────┘       │               └────────┬─────────┘       │
-       │             │                        │                 │
+  │  Agent   │       │         │     │ • Causal analysis│       │
+  │ executes │       │         └─────│ • Strategy evolve│       │
+  │ (Docker  │       │               │ • Temporal detect│       │
+  │  sandbox)│       │               └────────┬─────────┘       │
+  └────┬─────┘       │                        │                 │
        ▼             │                        ▼                 │
   ┌──────────┐       │           ┌──────────────────────┐      │
   │  Ingest  │───────┼──────────▶│  Next session is     │      │
@@ -211,31 +222,6 @@ Current background coding agents treat every session independently:
                      └──────────────────────────────────────────┘
 ```
 
-### Three Engines
-
-#### 1. Knowledge Graph — "Remember"
-- **5 languages** indexed (Python, TypeScript, JavaScript, Go, Rust — plus TSX/JSX dialect support)
-- **Semantic search** via ChromaDB vector embeddings
-- **Dependency mapping** — "If I change `UserService.authenticate()`, what breaks?"
-- **Impact analysis** — BFS up the dependency chain
-- **Context injection** — relevant symbols, conventions, and approaches injected into agent prompts
-
-#### 2. Laboratory — "Experiment"
-- **12 strategy templates** — problem-type-aware (bug fix → "Targeted Fix" + "Root Cause + Guard" + "Defense in Depth")
-- **Configurable scoring** — logistic curve normalization, no arbitrary cliffs
-- **4 winner modes** — best performing, smallest change, fastest execution, first to pass
-- **Concurrent execution** — semaphore-limited parallel spawning
-- **Multi-agent debate** — variants critique each other, synthesize consensus solutions
-
-#### 3. Learning Engine — "Improve"
-- **Pattern extraction** — infers testing conventions, change scope, code review quality
-- **Efficacy tracking** — running averages for success rate, duration, tokens
-- **Failure analysis** — understands why approaches fail
-- **Approach suggestion** — recommends historically-best approach and model
-- **Confidence scores** — every classification returns `(type, 0.0–1.0)` not just a label
-- **Causal reasoning** — goes beyond correlation to answer counterfactual questions
-- **Strategy evolution** — genetic algorithms tune strategies to your specific codebase
-
 ---
 
 ## Installation
@@ -243,343 +229,94 @@ Current background coding agents treat every session independently:
 ### Prerequisites
 - Python 3.12 or later
 - (Optional) [Redis](https://redis.io) for production rate limiting
+- (Optional) [Docker](https://docker.com) for sandboxed code execution
 - (Optional) [Ollama](https://ollama.ai) for local LLM testing
 
-### Option 1: pip (recommended)
+### pip (recommended)
 
 ```bash
 pip install shadow-engine
-
-# With optional Redis support
-pip install "shadow-engine[redis]"
+pip install "shadow-engine[dev]"     # For development
+pip install "shadow-engine[redis]"   # For Redis rate limiting
+pip install "shadow-engine[tree-sitter-langs]"  # For tree-sitter parsers
 ```
 
-### Option 2: From source
+### From source
 
 ```bash
 git clone https://github.com/rudraneel93/shadow-engine.git
 cd shadow-engine
 pip install -e ".[dev]"
+shadow-engine bootstrap
 ```
-
-### Option 3: Docker
-
-```bash
-docker compose -f docker/docker-compose.yml up -d
-```
-
-This starts both Shadow Engineer and a Redis instance for rate limiting.
 
 ---
 
 ## Quick Start (CLI)
 
-### 1. Index Your Codebase
-
 ```bash
 cd /path/to/your/project
-shadow-engine bootstrap
-```
-
-Output:
-```
-Bootstrapped: 423 symbols, 40 files indexed
-```
-
-### 2. Search for Symbols
-
-```bash
-shadow-engine search "authentication"
-```
-
-Output:
-```
-[class] TestAuthentication — tests/test_api_server.py
-[function] client_with_auth — tests/test_api_server.py
-[function] test_auth_passes_with_correct_key — tests/test_api_server.py
-```
-
-### 3. Get AI-Ready Context
-
-```bash
-shadow-engine context "fix the login rate-limiting bug"
-```
-
-Output (injects into agent prompts):
-```
-## Shadow Engineer — Context for ChatGPT
-
-### Problem Classification
-- **Type**: bug_fix (confidence: 0.95)
-- **Recommended Approach**: Targeted Fix
-- **Expected Success Rate**: 100% (4/4 attempts)
-- **Best Model**: qwen3:8b
-
-### Historical Insight
-- Targeted Fix for bug_fix: 4/4 succeeded (100%). The one Aggressive Rewrite attempt failed.
-
-### Knowledge Graph Context
-#### Semantically Relevant Symbols
-- **verify_api_key** (`function`) in `api_server/server.py` (relevance: 0.72)
-  Verify the X-API-Key header matches the configured secret.
-- **RedisRateLimiter** (`class`) in `redis_limiter/__init__.py` (relevance: 0.68)
-  Production rate limiter backed by Redis.
-...
-```
-
-### 4. Analyze Change Impact
-
-```bash
-shadow-engine impact "ShadowEngine"
-```
-
-Output:
-```json
-{
-  "symbol": {"name": "ShadowEngine", "kind": "class", "file_path": "main.py"},
-  "dependencies": ["CodebaseIndexer", "ExperimentRunner", "LearningEngine"],
-  "direct_dependents": ["cli_main", "EngineRegistry"],
-  "total_affected_symbols": 12
-}
-```
-
-### 5. Get Approach Suggestion
-
-```bash
-shadow-engine suggest "add a search feature for products"
-```
-
-Output:
-```json
-{
-  "problem_type": "feature",
-  "classification_confidence": 0.70,
-  "recommended_approach": "Extensible Implementation",
-  "expected_success_rate": 1.0,
-  "best_model": "qwen3:8b"
-}
-```
-
-### 6. Create Parallel Experiments
-
-```bash
-shadow-engine experiment "refactor the billing module" --variants 3
-```
-
-### 7. Record Session Results
-
-```bash
-shadow-engine record \
-  --session-id "session-abc123" \
-  --outcome "success" \
-  --prompt "fix the login rate-limiting bug" \
-  --approach "Targeted Fix" \
-  --model "qwen3:8b" \
-  --files "src/auth/service.py" "tests/auth/test_service.py" \
-  --tests-passed 12 --tests-failed 0 \
-  --duration 45.2 --tokens 8500
-```
-
-### 8. View Improvement Report
-
-```bash
-shadow-engine report
+shadow-engine bootstrap          # Index codebase
+shadow-engine search "auth"      # Search symbols
+shadow-engine context "fix bug"  # Get AI-ready context
+shadow-engine suggest "add feature"  # Get approach recommendation
+shadow-engine experiment "refactor billing" --variants 3  # Parallel experiments
+shadow-engine record --session-id "sess-001" --outcome "success" --prompt "fix bug" --approach "Targeted Fix" --files "src/auth.py" --tests-passed 10 --tests-failed 0 --duration 30 --tokens 5000
+shadow-engine report             # View improvement report
 ```
 
 ---
 
 ## REST API Integration
 
-Start the server:
 ```bash
-# Development
+# Start server
 uvicorn shadow_engine.api_server.server:app --reload
 
-# Production
-shadow-engine-server
-# or
-docker compose -f docker/docker-compose.yml up -d
-```
-
-### Authentication (optional)
-
-```bash
+# Auth (optional)
 export SHADOW_ENGINE_API_KEY="your-secret-key"
-curl -H "X-API-Key: your-secret-key" http://localhost:8000/health
+
+# Core workflow
+curl -X POST http://localhost:8000/bootstrap
+curl "http://localhost:8000/context?task=fix+login+bug"
+curl "http://localhost:8000/suggest?task=fix+login+bug"
+curl -X POST "http://localhost:8000/experiment?task=refactor+auth&variants=3"
+curl -X POST http://localhost:8000/sessions/ingest -H "Content-Type: application/json" -d '{...}'
+curl http://localhost:8000/report
+curl http://localhost:8000/health
 ```
 
-### Core Workflow
+Full API reference: **[API_DOCS.md](API_DOCS.md)** — Swagger UI at `http://localhost:8000/docs`
+
+---
+
+## Docker Sandbox
+
+Shadow Engineer includes a Docker-based sandbox for safe code execution in the Laboratory:
 
 ```bash
-# 1. Index the codebase
-curl -X POST http://localhost:8000/bootstrap
+# Run sandbox verification (10 isolation tests)
+bash scripts/test_docker_sandbox.sh
 
-# 2. Get context for an agent prompt
-curl "http://localhost:8000/context?task=fix+the+login+rate+limiting+bug"
-
-# 3. Get approach suggestion
-curl "http://localhost:8000/suggest?task=fix+the+login+rate+limiting+bug"
-
-# 4. Create an experiment batch
-curl -X POST "http://localhost:8000/experiment?task=refactor+auth&variants=3"
-
-# 5. Record session result
-curl -X POST http://localhost:8000/sessions/ingest \
-  -H "Content-Type: application/json" \
-  -d '{
-    "session_id": "sess-001",
-    "outcome": "success",
-    "prompt": "fix the login bug",
-    "approach": "Targeted Fix",
-    "model": "qwen3:8b",
-    "files_changed": ["src/auth.py", "tests/test_auth.py"],
-    "tests_passed": 10,
-    "tests_failed": 0,
-    "duration_seconds": 30.0,
-    "token_count": 5000
-  }'
-
-# 6. View improvement report
-curl http://localhost:8000/report
-
-# 7. Check operational metrics
-curl http://localhost:8000/metrics
+# Start full integration test environment
+docker compose -f docker/docker-compose.test.yml up -d
+# API available at http://localhost:18000
+# Redis available at localhost:16379
 ```
 
-### Full API Reference
-
-All 11 endpoints are documented in **[API_DOCS.md](API_DOCS.md)** with request/response schemas, field descriptions, and curl examples. Interactive Swagger UI at `http://localhost:8000/docs`.
-
----
-
-## Python SDK
-
-```python
-import httpx
-
-class ShadowEngineClient:
-    """Minimal Python client for Shadow Engine REST API."""
-    
-    def __init__(self, base_url: str = "http://localhost:8000", api_key: str | None = None):
-        self.base_url = base_url.rstrip("/")
-        self.headers = {"X-API-Key": api_key} if api_key else {}
-
-    def bootstrap(self, repo: str = ".") -> dict:
-        r = httpx.post(f"{self.base_url}/bootstrap", params={"repo": repo}, headers=self.headers)
-        r.raise_for_status()
-        return r.json()
-
-    def get_context(self, task: str, repo: str = ".") -> str:
-        r = httpx.get(f"{self.base_url}/context", params={"task": task, "repo": repo}, headers=self.headers)
-        r.raise_for_status()
-        return r.json()["context"]
-
-    def search(self, query: str, kind: str | None = None, repo: str = ".") -> dict:
-        params = {"query": query, "repo": repo}
-        if kind: params["kind"] = kind
-        r = httpx.get(f"{self.base_url}/search", params=params, headers=self.headers)
-        r.raise_for_status()
-        return r.json()
-
-    def suggest(self, task: str, repo: str = ".") -> dict:
-        r = httpx.get(f"{self.base_url}/suggest", params={"task": task, "repo": repo}, headers=self.headers)
-        r.raise_for_status()
-        return r.json()
-
-    def create_experiment(self, task: str, variants: int = 3, repo: str = ".") -> dict:
-        r = httpx.post(f"{self.base_url}/experiment", params={"task": task, "variants": variants, "repo": repo}, headers=self.headers)
-        r.raise_for_status()
-        return r.json()
-
-    def ingest_session(self, **kwargs) -> dict:
-        r = httpx.post(f"{self.base_url}/sessions/ingest", json=kwargs, headers=self.headers)
-        r.raise_for_status()
-        return r.json()
-
-    def get_report(self, repo: str = ".") -> str:
-        r = httpx.get(f"{self.base_url}/report", params={"repo": repo}, headers=self.headers)
-        r.raise_for_status()
-        return r.text
-
-    def get_stats(self, repo: str = ".") -> dict:
-        r = httpx.get(f"{self.base_url}/stats", params={"repo": repo}, headers=self.headers)
-        r.raise_for_status()
-        return r.json()
-
-    def get_metrics(self, repo: str = ".") -> dict:
-        r = httpx.get(f"{self.base_url}/metrics", params={"repo": repo}, headers=self.headers)
-        r.raise_for_status()
-        return r.json()
-
-    def health(self) -> dict:
-        r = httpx.get(f"{self.base_url}/health")
-        r.raise_for_status()
-        return r.json()
-```
-
-### Usage Example
-
-```python
-client = ShadowEngineClient(base_url="http://localhost:8000", api_key="your-secret-key")
-result = client.bootstrap()
-print(f"Indexed {result['symbols_indexed']} symbols")
-
-context = client.get_context("fix the login rate-limiting bug")
-suggestion = client.suggest("fix the login rate-limiting bug")
-print(f"Recommended: {suggestion['recommended_approach']} ({suggestion['expected_success_rate']:.0%} expected)")
-
-client.ingest_session(
-    session_id="sess-001", outcome="success", prompt="fix the login bug",
-    approach="Targeted Fix", model="qwen3:8b",
-    files_changed=["src/auth.py", "tests/test_auth.py"],
-    tests_passed=10, tests_failed=0, duration_seconds=30.0, token_count=5000,
-)
-
-print(client.get_report())
-```
-
----
-
-## Open-Inspect Integration
-
-Shadow Engineer provides an async bridge that plugs directly into Open-Inspect's session lifecycle:
-
-```python
-from shadow_engine.integrations.openinspect import OpenInspectBridge
-
-bridge = OpenInspectBridge(repo_path="/path/to/your/repo")
-bridge.bootstrap_if_needed()
-
-config = {"prompt": "fix the login rate-limiting bug", "repository": "my-repo"}
-enriched = await bridge.enrich_session_config(config)
-# enriched["prompt"] now contains knowledge graph context
-
-result = {
-    "session_id": "sess-abc123", "outcome": "completed",
-    "prompt": "fix the login rate-limiting bug", "approach": "Targeted Fix",
-    "model": "qwen3:8b", "files_changed": ["src/auth.py", "tests/test_auth.py"],
-    "tests_passed": 12, "tests_failed": 0, "duration_seconds": 45.2, "token_count": 8500,
-}
-ingestion = await bridge.ingest_session_result(result)
-```
-
-> **Note:** The bridge code exists but hasn't been tested against a live Open-Inspect instance — contributions welcome.
+Sandbox features: network isolation, read-only filesystem, memory/PID limits, capability dropping, container timeouts. Supports adversarial testing with null bytes, Unicode bidi, fork bombs, and resource exhaustion.
 
 ---
 
 ## Deployment
 
-### Docker
-
 ```bash
+# Docker
 docker compose -f docker/docker-compose.yml up -d
 
 # Without Redis
 docker build -t shadow-engine -f docker/Dockerfile .
-docker run -p 8000:8000 \
-  -e SHADOW_ENGINE_API_KEY=your-secret \
-  -v /data/shadow-engine:/home/shadow/data \
-  shadow-engine
+docker run -p 8000:8000 -e SHADOW_ENGINE_API_KEY=your-secret shadow-engine
 ```
 
 ### Environment Variables
@@ -589,22 +326,20 @@ docker run -p 8000:8000 \
 | `SHADOW_ENGINE_API_KEY` | `""` (disabled) | API key for authentication |
 | `SHADOW_ENGINE_REDIS_URL` | `redis://redis:6379` | Redis URL for rate limiting |
 | `SHADOW_ENGINE_RATE_LIMIT` | `100` | Max requests per window |
-| `SHADOW_ENGINE_RATE_WINDOW` | `60` | Rate limit window in seconds |
 | `SHADOW_ENGINE_ALLOWED_ROOTS` | `""` (all paths) | Comma-separated allowed repo paths |
+| `SHADOW_EXPERIMENTAL` | `""` (disabled) | Set to `1` to enable experimental AI engines |
 
 ---
 
 ## Supported Languages
 
-| Language | Extensions | Symbols Extracted |
-|----------|-----------|-------------------|
-| Python | `.py` | Functions, methods, classes (AST-based with regex fallback) |
-| TypeScript | `.ts`, `.tsx` | Functions, classes, interfaces, enums, type aliases |
-| JavaScript | `.js`, `.jsx` | Functions, classes, constants |
-| Go | `.go` | Functions, methods, structs, interfaces |
-| Rust | `.rs` | Functions, structs, traits, enums, type aliases |
-
-> **Note:** Python uses `ast.parse()` for accurate symbol extraction. Other languages currently use regex-based extraction. Tree-sitter integration is planned for TypeScript, JavaScript, Go, and Rust (see [Roadmap](ROADMAP.md)).
+| Language | Extensions | Parser | Accuracy |
+|----------|-----------|--------|----------|
+| Python | `.py` | `ast.parse()` (stdlib) | ✅ Excellent |
+| TypeScript | `.ts`, `.tsx` | tree-sitter + regex fallback | ✅ Good |
+| JavaScript | `.js`, `.jsx` | tree-sitter + regex fallback | ✅ Good |
+| Go | `.go` | tree-sitter + regex fallback | ✅ Good |
+| Rust | `.rs` | tree-sitter + regex fallback | ✅ Good |
 
 ---
 
@@ -612,64 +347,71 @@ docker run -p 8000:8000 \
 
 ```
 shadow-engine/
-├── README.md, CHANGELOG.md, API_DOCS.md, FINDINGS_REPORT.md, ROADMAP.md
+├── README.md, ARCHITECTURE.md, API_DOCS.md, ROADMAP.md
+├── CHANGELOG.md, CONTRIBUTING.md, FINDINGS_REPORT.md
 ├── pyproject.toml, LICENSE
-├── docker/
-├── .github/workflows/ci.yml
-├── scripts/     (test_multimodel_e2e.py, test_ollama_e2e.py, build_efficacy_data.py, test_breakthrough_features.py)
+├── docker/                    (Dockerfile, docker-compose.yml, docker-compose.test.yml)
+├── .github/workflows/ci.yml   (CI with coverage enforcement)
+├── scripts/
+│   ├── test_docker_sandbox.sh    (10 Docker isolation tests)
+│   ├── benchmark.py              (Performance benchmarks)
+│   └── test_breakthrough_features.py
 ├── src/shadow_engine/
 │   ├── main.py, observability.py
-│   ├── knowledge_graph/ (indexer.py, models.py, store.py)
+│   ├── knowledge_graph/ (indexer.py [tree-sitter], models.py, store.py)
 │   ├── sqlite_store/db.py, chroma_store/vector_store.py
 │   ├── laboratory/ (experiment.py, debate.py)
 │   ├── learning/
-│   │   ├── engine.py, bayesian_predictor.py, diff_patterns.py
-│   │   ├── causal_engine.py, pr_simulator.py, temporal_anomaly.py
-│   │   ├── intervention_engine.py, strategy_evolution.py
-│   │   ├── speculative_context.py, transfer_store.py, context_budget.py
-│   │   ├── health_score.py, hot_zones.py, live_monitor.py, risk_gate.py
-│   │   └── ...
+│   │   ├── engine.py, causal_engine.py, pr_simulator.py
+│   │   ├── temporal_anomaly.py, intervention_engine.py
+│   │   ├── strategy_evolution.py, speculative_context.py
+│   │   ├── transfer_store.py, context_budget.py
+│   │   ├── graceful.py (error handling), experimental.py (feature flag)
+│   │   └── ...  (bayesian_predictor, diff_patterns, hot_zones, risk_gate, etc.)
 │   ├── llm/providers.py, async_lab/executor.py
 │   ├── api_server/server.py, integrations/openinspect.py
 │   ├── utils/serialization.py
 │   └── redis_limiter/
-└── tests/ (7 test files, ~80 tests)
+└── tests/
+    ├── test_experimental_engines.py (36 tests with operational validation)
+    ├── test_api_integration.py (14 tests: full pipeline + security)
+    ├── test_providers.py (20 tests: mocked HTTP)
+    ├── test_sandbox_execution.py (16 tests: adversarial)
+    ├── test_knowledge_graph.py (33 tests)
+    ├── test_learning.py, test_api_server.py, test_integration.py
+    └── conftest.py (synthetic session factory, 50 sessions)
 ```
 
 ---
 
 ## Known Limitations
 
-This is an **actively developed technology preview**. The following limitations are being addressed:
+This is an **actively developed alpha-stage project**. The following limitations are documented transparently:
 
-| # | Limitation | Impact | Mitigation |
+| # | Limitation | Status | Mitigation |
 |---|-----------|--------|-----------|
-| 1 | **Regex-based indexing for non-Python languages** | Complex constructs (async functions, arrow functions, generics) may be missed in TS/JS/Go/Rust | Python uses AST already. Tree-sitter integration planned for other languages. |
-| 2 | **Small session datasets** | Causal engine needs ≥10 sessions; temporal anomaly detection needs ≥10; strategy evolution needs ≥20 for meaningful results | Modules degrade gracefully — return empty contexts or fallback values when data is insufficient. |
-| 3 | **No concurrent access testing for SQLite** | Multi-worker FastAPI deployments untested | SQLite WAL mode supports concurrent reads. PostgreSQL backend planned for scale. |
-| 4 | **Experimental engines need more validation** | Causal, debate, simulation, temporal, intervention, evolution, transfer engines are functional but not battle-tested | All pass 32 real-data tests. More session data improves accuracy. |
-| 5 | **ChromaDB requires sentence-transformers download** | First run downloads ~100MB model weights | Automatic; one-time cost. |
-| 6 | **Limited community validation** | Solo project; no external contributors or production deployments yet | MIT licensed; seeking early adopters and contributors. |
-| 7 | **No performance benchmarks** | Claims of "100K+ sessions" not yet validated with benchmarks | Reasonable for moderate scale based on SQLite WAL design. Benchmarks planned. |
+| 1 | **Single-file core** (main.py is 22KB) | ⚠️ Target for refactoring | Monolithic `ShadowEngine` class to be decomposed into focused modules |
+| 2 | **Experimental engines need scale validation** | ⚠️ Validated with 50 synthetic sessions | Operational validation tests passing; needs 100+ real sessions for full confidence |
+| 3 | **PostgreSQL backend not yet implemented** | ⚠️ Planned (B1 milestone) | SQLite WAL mode sufficient for single-node; PostgresStore on roadmap |
+| 4 | **Docker sandbox not in pytest** | ⚠️ Standalone Bash script | Integration via `testcontainers-python` planned |
+| 5 | **No community adoption** | ⚠️ Solo project | MIT licensed; seeking early adopters and contributors |
+| 6 | **Performance benchmarks not CI-automated** | ⚠️ Script exists | CI integration planned |
 
 ---
 
 ## FAQ
 
 **Q: How is this different from Open-Inspect?**
-A: Open-Inspect is a background agent framework — it spawns sandboxes and runs coding sessions. Shadow Engineer is a **learning layer** that adds cross-session memory, parallel experimentation, and compounding intelligence.
-
-**Q: Can I use this without Open-Inspect?**
-A: Yes. Shadow Engineer works with any background agent via its REST API or CLI.
-
-**Q: Does it require a GPU?**
-A: No. ChromaDB uses CPU embeddings by default.
-
-**Q: What scale does this support?**
-A: SQLite WAL mode supports moderate scale. PostgreSQL backend planned for larger deployments.
+A: Open-Inspect provides sandboxed agent infrastructure. Shadow Engineer adds persistent cross-session memory and learning — a complementary layer.
 
 **Q: Is this ready for production?**
-A: Shadow Engineer is a **Technology Preview (Alpha)**. It is suitable for evaluation, prototyping, and contributing to. The core learning loop, knowledge graph, and API server are functional and tested. The experimental AI engines improve with more session data and community feedback. See [Known Limitations](#known-limitations).
+A: Strong Alpha candidate approaching Beta. 241 tests pass with CI coverage enforcement. See [Known Limitations](#known-limitations).
+
+**Q: What scale does this support?**
+A: SQLite WAL mode supports moderate single-node scale. PostgreSQL backend planned for multi-tenant deployments.
+
+**Q: Does it require a GPU?**
+A: No. ChromaDB uses CPU embeddings by default. LLM calls are delegated to external providers (Ollama, OpenAI, Anthropic).
 
 ---
 
