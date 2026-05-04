@@ -1,0 +1,156 @@
+[
+  {
+    "id": "bug_001",
+    "target_file": "src/flask/logging.py",
+    "function": "wsgi_errors_stream",
+    "line": 25,
+    "mutation": "condition_flip",
+    "original_code": "if request:",
+    "mutated_code": "if not request:",
+    "difficulty": "easy",
+    "description": "condition flip in wsgi_errors_stream() at line 25"
+  },
+  {
+    "id": "bug_002",
+    "target_file": "src/flask/logging.py",
+    "function": "wsgi_errors_stream",
+    "line": 26,
+    "mutation": "return_none",
+    "original_code": "return request.environ[\"wsgi.errors\"]  # type: ignore[no-any-return]",
+    "mutated_code": "return None  # type: ignore[no-any-return]",
+    "difficulty": "medium",
+    "description": "return none in wsgi_errors_stream() at line 26"
+  },
+  {
+    "id": "bug_003",
+    "target_file": "src/flask/logging.py",
+    "function": "wsgi_errors_stream",
+    "line": 18,
+    "mutation": "delete_line",
+    "original_code": "is active, log to ``wsgi.errors``, otherwise use ``sys.stderr``.",
+    "mutated_code": "<deleted>",
+    "difficulty": "medium",
+    "description": "delete line in wsgi_errors_stream() at line 18"
+  },
+  {
+    "id": "bug_004",
+    "target_file": "src/flask/logging.py",
+    "function": "has_level_handler",
+    "line": 32,
+    "mutation": "condition_flip",
+    "original_code": "\"\"\"Check if there is a handler in the logging chain that will handle the",
+    "mutated_code": "\"\"\"Check if not there is a handler in the logging chain that will handle the",
+    "difficulty": "easy",
+    "description": "condition flip in has_level_handler() at line 32"
+  },
+  {
+    "id": "bug_005",
+    "target_file": "src/flask/logging.py",
+    "function": "has_level_handler",
+    "line": 40,
+    "mutation": "return_none",
+    "original_code": "return True",
+    "mutated_code": "return None",
+    "difficulty": "medium",
+    "description": "return none in has_level_handler() at line 40"
+  },
+  {
+    "id": "bug_001",
+    "target_file": "src/flask/sessions.py",
+    "function": "_lazy_sha1",
+    "line": 281,
+    "mutation": "return_none",
+    "original_code": "return hashlib.sha1(string)",
+    "mutated_code": "return None",
+    "difficulty": "medium",
+    "description": "return none in _lazy_sha1() at line 281"
+  },
+  {
+    "id": "bug_002",
+    "target_file": "src/flask/sessions.py",
+    "function": "_lazy_sha1",
+    "line": 278,
+    "mutation": "delete_line",
+    "original_code": "SHA-1, in which case the import and use as a default would fail before the",
+    "mutated_code": "<deleted>",
+    "difficulty": "medium",
+    "description": "delete line in _lazy_sha1() at line 278"
+  },
+  {
+    "id": "bug_003",
+    "target_file": "src/flask/sessions.py",
+    "function": "permanent",
+    "line": 30,
+    "mutation": "return_none",
+    "original_code": "return self.get(\"_permanent\", False)  # type: ignore[no-any-return]",
+    "mutated_code": "return None False)  # type: ignore[no-any-return]",
+    "difficulty": "medium",
+    "description": "return none in permanent() at line 30"
+  },
+  {
+    "id": "bug_001",
+    "target_file": "src/flask/config.py",
+    "function": "__init__",
+    "line": 24,
+    "mutation": "delete_line",
+    "original_code": "self, name: str, get_converter: t.Callable[[t.Any], T] | None = None",
+    "mutated_code": "<deleted>",
+    "difficulty": "medium",
+    "description": "delete line in __init__() at line 24"
+  },
+  {
+    "id": "bug_001",
+    "target_file": "src/flask/templating.py",
+    "function": "_default_template_ctx_processor",
+    "line": 28,
+    "mutation": "condition_flip",
+    "original_code": "if ctx.has_request:",
+    "mutated_code": "if not ctx.has_request:",
+    "difficulty": "easy",
+    "description": "condition flip in _default_template_ctx_processor() at line 28"
+  },
+  {
+    "id": "bug_002",
+    "target_file": "src/flask/templating.py",
+    "function": "_default_template_ctx_processor",
+    "line": 33,
+    "mutation": "return_none",
+    "original_code": "return rv",
+    "mutated_code": "return None",
+    "difficulty": "medium",
+    "description": "return none in _default_template_ctx_processor() at line 33"
+  },
+  {
+    "id": "bug_003",
+    "target_file": "src/flask/templating.py",
+    "function": "_default_template_ctx_processor",
+    "line": 23,
+    "mutation": "delete_line",
+    "original_code": "proxies with their concrete objects for faster access.",
+    "mutated_code": "<deleted>",
+    "difficulty": "medium",
+    "description": "delete line in _default_template_ctx_processor() at line 23"
+  },
+  {
+    "id": "bug_004",
+    "target_file": "src/flask/templating.py",
+    "function": "_render",
+    "line": 133,
+    "mutation": "return_none",
+    "original_code": "return rv",
+    "mutated_code": "return None",
+    "difficulty": "medium",
+    "description": "return none in _render() at line 133"
+  },
+  {
+    "id": "bug_005",
+    "target_file": "src/flask/templating.py",
+    "function": "_render",
+    "line": 124,
+    "mutation": "delete_line",
+    "original_code": "app = ctx.app",
+    "mutated_code": "<deleted>",
+    "difficulty": "medium",
+    "description": "delete line in _render() at line 124"
+  }
+]
