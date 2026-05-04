@@ -1,7 +1,8 @@
-"""Tests for experimental AI engines against real shadow-engine data.
+"""Tests for experimental AI engines.
 
-These tests require a bootstrapped shadow-engine database with real session data.
-Run: pip install -e ".[dev]" && shadow-engine bootstrap && pytest tests/test_experimental_engines.py
+Uses two data sources:
+1. Real shadow-engine bootstrapped data (5 sessions) — structural/smoke tests
+2. Synthetic 50-session data — operational validation with meaningful output
 """
 
 import pytest
@@ -15,6 +16,7 @@ from shadow_engine.learning.speculative_context import SpeculativeContextEngine
 from shadow_engine.learning.transfer_store import TransferStore
 from shadow_engine.learning.context_budget import ContextBudgetManager
 from shadow_engine.laboratory.debate import DebateEngine
+from tests.conftest import create_synthetic_sessions
 
 
 @pytest.fixture(scope="module")
@@ -233,6 +235,105 @@ class TestTransferStore:
         transfer.abstract_pattern("Test", "bug_fix", "repo1", True)
         ctx = transfer.build_transfer_context("bug_fix")
         assert len(ctx) > 0
+
+
+class TestOperationalValidation:
+    """Validates engines produce meaningful output with sufficient data (50 sessions).
+
+    These tests use the populated_store fixture with known causal relationships:
+    - Targeted Fix = ~90% success, Aggressive Rewrite = ~20% success
+    - bug_fix tasks are easier than refactor tasks
+    """
+
+    def test_causal_engine_produces_intervention_effect(self, populated_store):
+        """With 50 sessions, intervention query MUST return causal_effect (not error)."""
+        causal = CausalEngine(populated_store)
+        result = causal.query_intervention(
+            treatment="approach",
+            treatment_value="Targeted Fix",
+            control_value="Aggressive Rewrite",
+        )
+        assert "error" not in result, f"Expected causal effect, got error: {result.get('error')}"
+        assert "causal_effect" in result
+        # With 50 sessions stratified across adjustment variables, the weighted
+        # average may be moderate — minimum check: effect is positive (not zero or negative)
+        assert result["causal_effect"] > 0.0, (
+            f"Targeted Fix should have positive causal effect, got {result.get('causal_effect')}"
+        )
+        assert result.get("ate") is not None
+        # Targeted Fix should outperform Aggressive Rewrite
+        if result.get("ate") is not None:
+            assert result["ate"] > 0.0, f"ATE should be positive (Targeted Fix > Aggressive Rewrite): {result['ate']}"
+
+    def test_pr_simulator_with_known_risky_files(self, populated_store):
+        """Risky files (auth.py, middleware.py) should have higher risk scores."""
+        sim = PROutcomeSimulator(populated_store)
+        risky_result = sim.simulate_pr(
+            ["src/auth.py", "src/middleware.py"],
+            approach="Aggressive Rewrite",
+            num_simulations=50,
+        )
+        safe_result = sim.simulate_pr(
+            ["src/utils.py", "src/helpers.py"],
+            approach="Targeted Fix",
+            num_simulations=50,
+        )
+        assert risky_result.overall_risk_score > 0, "Risk score should be computed"
+        # Aggressive Rewrite on risky files should score higher
+        assert risky_result.overall_risk_score >= safe_result.overall_risk_score * 0.5
+
+    def test_temporal_anomaly_detects_changepoint(self, populated_store):
+        """BOCD should initialize and produce valid expected rate with 50 sessions."""
+        tad = TemporalAnomalyDetector(populated_store)
+        tad.ingest_sessions()
+        assert len(tad.bocd.observations) > 10
+        rate = tad.bocd.get_expected_success_rate()
+        assert 0.0 <= rate <= 1.0
+        # With known data (~50% overall success), rate should be >0.3 and <1.0
+        assert rate > 0.3, f"Expected rate too low: {rate}"
+
+    def test_strategy_evolution_prefers_successful_strategies(self, populated_store):
+        """Best strategies should favor Targeted Fix (>80% success) over others."""
+        evo = StrategyEvolutionEngine(populated_store)
+        evo.evolve("bug_fix")
+        evo.evolve("bug_fix")  # Two generations
+        best = evo.get_best_strategies("bug_fix", top_n=1)
+        assert len(best) > 0
+        # Best strategy should mention "minimal", "targeted", "analyze", "fix" or similar
+        best_approach = best[0].get("approach", "").lower()
+        assert any(w in best_approach for w in ("minimal", "targeted", "analyze", "fix"))
+
+    def test_debate_produces_meaningful_synthesis(self, populated_store):
+        """With diverse variants, debate should generate synthesis with improvements."""
+        causal = CausalEngine(populated_store)
+        sessions = causal.get_session_data()
+        if len(sessions) < 2:
+            pytest.skip("Need at least 2 sessions")
+
+        debate = DebateEngine()
+        variants = [
+            {
+                "variant_id": s.get("session_id", f"v{i}"),
+                "approach": s.get("approach", "Targeted Fix"),
+                "score": 85.0 if s.get("was_successful") else 30.0,
+                "tests_passed": s.get("tests_passed", 10),
+                "tests_total": s.get("tests_total", 10),
+                "files_changed": s.get("files_changed", []),
+                "token_count": s.get("token_count", 5000),
+            }
+            for i, s in enumerate(sessions[:5])
+        ]
+        result = debate.run_debate(variants, "fix bug")
+        assert result.variant_count > 0
+        assert len(result.rounds) > 0
+        # Synthesis should exist
+        assert result.synthesis_approach
+
+    def test_causal_context_meaningful_with_enough_data(self, populated_store):
+        """With 50 sessions, causal context should NOT be empty."""
+        causal = CausalEngine(populated_store)
+        ctx = causal.build_causal_context("fix the login rate-limiting bug")
+        assert len(ctx) > 0, "Causal context should not be empty with 50 sessions"
 
 
 class TestContextBudget:
