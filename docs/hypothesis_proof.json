@@ -1,0 +1,296 @@
+{
+  "title": "Session 100 > Session 1 \u2014 Hypothesis Proof",
+  "codebase": "Real Python functions with real pytest tests",
+  "llm": "qwen3-coder:480b-cloud",
+  "sessions": 30,
+  "overall_rate": 0.0,
+  "patterns": 0,
+  "health": 60,
+  "per_approach": {
+    "Targeted Fix": 0.0,
+    "Minimal Viable": 0.0,
+    "Extensible Implementation": 0.0,
+    "Safe Extract": 0.0,
+    "Root Cause + Guard": 0.0,
+    "Incremental Rewrite": 0.0,
+    "TDD First": 0.0
+  },
+  "compounding": {
+    "early_rate": 0.0,
+    "late_rate": 0.0,
+    "delta": 0.0
+  },
+  "verdict": "NOT YET PROVEN \u2014 needs more sessions",
+  "per_session": [
+    {
+      "session": 1,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 54.1,
+      "patterns": 0
+    },
+    {
+      "session": 2,
+      "ptype": "feature",
+      "approach": "Minimal Viable",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 46.2,
+      "patterns": 0
+    },
+    {
+      "session": 3,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 21.7,
+      "patterns": 0
+    },
+    {
+      "session": 4,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 63.8,
+      "patterns": 0
+    },
+    {
+      "session": 5,
+      "ptype": "refactor",
+      "approach": "Safe Extract",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 105.4,
+      "patterns": 0
+    },
+    {
+      "session": 6,
+      "ptype": "feature",
+      "approach": "Root Cause + Guard",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 46.0,
+      "patterns": 0
+    },
+    {
+      "session": 7,
+      "ptype": "refactor",
+      "approach": "Incremental Rewrite",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 79.1,
+      "patterns": 0
+    },
+    {
+      "session": 8,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 66.7,
+      "patterns": 0
+    },
+    {
+      "session": 9,
+      "ptype": "bug_fix",
+      "approach": "TDD First",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 100.4,
+      "patterns": 0
+    },
+    {
+      "session": 10,
+      "ptype": "refactor",
+      "approach": "Safe Extract",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 115.6,
+      "patterns": 0
+    },
+    {
+      "session": 11,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 40.0,
+      "patterns": 0
+    },
+    {
+      "session": 12,
+      "ptype": "feature",
+      "approach": "Minimal Viable",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 35.2,
+      "patterns": 0
+    },
+    {
+      "session": 13,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 33.5,
+      "patterns": 0
+    },
+    {
+      "session": 14,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 58.1,
+      "patterns": 0
+    },
+    {
+      "session": 15,
+      "ptype": "refactor",
+      "approach": "Safe Extract",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 66.6,
+      "patterns": 0
+    },
+    {
+      "session": 16,
+      "ptype": "feature",
+      "approach": "Root Cause + Guard",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 41.8,
+      "patterns": 0
+    },
+    {
+      "session": 17,
+      "ptype": "refactor",
+      "approach": "Incremental Rewrite",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 68.7,
+      "patterns": 0
+    },
+    {
+      "session": 18,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 49.8,
+      "patterns": 0
+    },
+    {
+      "session": 19,
+      "ptype": "bug_fix",
+      "approach": "TDD First",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 28.8,
+      "patterns": 0
+    },
+    {
+      "session": 20,
+      "ptype": "refactor",
+      "approach": "Safe Extract",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 25.4,
+      "patterns": 0
+    },
+    {
+      "session": 21,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 11.8,
+      "patterns": 0
+    },
+    {
+      "session": 22,
+      "ptype": "feature",
+      "approach": "Minimal Viable",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 10.3,
+      "patterns": 0
+    },
+    {
+      "session": 23,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 12.5,
+      "patterns": 0
+    },
+    {
+      "session": 24,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 21.9,
+      "patterns": 0
+    },
+    {
+      "session": 25,
+      "ptype": "refactor",
+      "approach": "Safe Extract",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 30.7,
+      "patterns": 0
+    },
+    {
+      "session": 26,
+      "ptype": "feature",
+      "approach": "Root Cause + Guard",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 19.2,
+      "patterns": 0
+    },
+    {
+      "session": 27,
+      "ptype": "refactor",
+      "approach": "Incremental Rewrite",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 30.8,
+      "patterns": 0
+    },
+    {
+      "session": 28,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 39.2,
+      "patterns": 0
+    },
+    {
+      "session": 29,
+      "ptype": "bug_fix",
+      "approach": "TDD First",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 41.8,
+      "patterns": 0
+    },
+    {
+      "session": 30,
+      "ptype": "refactor",
+      "approach": "Safe Extract",
+      "tests": "0/0",
+      "outcome": "failure",
+      "dur": 69.9,
+      "patterns": 0
+    }
+  ]
+}

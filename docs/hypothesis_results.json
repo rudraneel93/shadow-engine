@@ -1,0 +1,175 @@
+{
+  "codebase": "Flask",
+  "sessions": 18,
+  "overall_rate": 0.0,
+  "patterns": 0,
+  "per_model": {
+    "qwen3-coder:480b-cloud": 0.0,
+    "gpt-oss:120b-cloud": 0.0,
+    "qwen3:8b": 0.0
+  },
+  "per_session": [
+    {
+      "session": 1,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "model": "qwen3-coder:480b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 90.0
+    },
+    {
+      "session": 2,
+      "ptype": "bug_fix",
+      "approach": "Root Cause + Guard",
+      "model": "gpt-oss:120b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 6.2
+    },
+    {
+      "session": 3,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "model": "qwen3:8b",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 32.7
+    },
+    {
+      "session": 4,
+      "ptype": "refactor",
+      "approach": "Safe Extract",
+      "model": "qwen3-coder:480b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 70.2
+    },
+    {
+      "session": 5,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "model": "gpt-oss:120b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 6.2
+    },
+    {
+      "session": 6,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "model": "qwen3:8b",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 28.1
+    },
+    {
+      "session": 7,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "model": "qwen3-coder:480b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 62.9
+    },
+    {
+      "session": 8,
+      "ptype": "bug_fix",
+      "approach": "Root Cause + Guard",
+      "model": "gpt-oss:120b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 6.9
+    },
+    {
+      "session": 9,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "model": "qwen3:8b",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 28.2
+    },
+    {
+      "session": 10,
+      "ptype": "refactor",
+      "approach": "Safe Extract",
+      "model": "qwen3-coder:480b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 38.0
+    },
+    {
+      "session": 11,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "model": "gpt-oss:120b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 8.1
+    },
+    {
+      "session": 12,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "model": "qwen3:8b",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 28.7
+    },
+    {
+      "session": 13,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "model": "qwen3-coder:480b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 28.5
+    },
+    {
+      "session": 14,
+      "ptype": "bug_fix",
+      "approach": "Root Cause + Guard",
+      "model": "gpt-oss:120b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 6.8
+    },
+    {
+      "session": 15,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "model": "qwen3:8b",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 27.7
+    },
+    {
+      "session": 16,
+      "ptype": "refactor",
+      "approach": "Safe Extract",
+      "model": "qwen3-coder:480b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 22.1
+    },
+    {
+      "session": 17,
+      "ptype": "bug_fix",
+      "approach": "Targeted Fix",
+      "model": "gpt-oss:120b-cloud",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 4.5
+    },
+    {
+      "session": 18,
+      "ptype": "feature",
+      "approach": "Extensible Implementation",
+      "model": "qwen3:8b",
+      "pytest": "130/132",
+      "outcome": "failure",
+      "dur": 27.5
+    }
+  ]
+}
