@@ -1,0 +1,44 @@
+# Docker Compose test fixture for shadow-engine integration tests.
+# Spins up a disposable environment with API server + Redis for rate limiting.
+#
+# Usage:
+#   docker compose -f docker/docker-compose.test.yml up -d
+#   pytest integration_tests/
+#   docker compose -f docker/docker-compose.test.yml down -v
+
+version: "3.9"
+
+services:
+  shadow-engine:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "18000:8000"
+    environment:
+      - SHADOW_ENGINE_API_KEY=test-key-integration
+      - SHADOW_ENGINE_REDIS_URL=redis://redis:6379
+      - SHADOW_ENGINE_RATE_LIMIT=1000
+      - SHADOW_ENGINE_RATE_WINDOW=60
+      - SHADOW_EXPERIMENTAL=1
+    volumes:
+      - shadow_data:/home/shadow/data
+      - ../tests/fixtures:/workspace:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: "no"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    restart: "no"
+
+volumes:
+  shadow_data:
