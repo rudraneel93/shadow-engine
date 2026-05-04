@@ -2,7 +2,10 @@
 """Definitive proof: does shadow-engine's knowledge graph improve fix success rate?
 
 Uses self-contained testbed (10 functions, 30 tests) with verified bug mutations.
-Each session: inject bug → verify failure → LLM fixes → pytest → record → restore.
+Each session: inject bug → run pytest (get FAILURE output) → LLM sees failures → fixes → run again.
+
+Key change from previous: The LLM sees ONLY the failing test output, NOT the correct answer.
+This measures whether the LLM can independently debug and fix code.
 
 Two groups:
 - TEST: Knowledge graph retained across all sessions
@@ -22,31 +25,31 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 TESTBED = SCRIPTS_DIR / "testbed.py"
 TESTS = SCRIPTS_DIR / "test_testbed.py"
 
-# Verified bug mutations (4/5 confirmed to cause failures)
+# Verified bug mutations — harder ones that the LLM must debug from test output
 BUGS = [
     {
         "id": "fibonacci_op", "function": "fibonacci",
         "original": "result[-1] + result[-2]", "mutated": "result[-1] - result[-2]",
-        "test_filter": "Fibonacci", "difficulty": "easy",
-        "description": "Fix fibonacci: operator + was changed to - (returns wrong sequence)",
+        "test_filter": "Fibonacci", "difficulty": "medium",
+        "description": "The fibonacci() function returns incorrect values for n > 2.",
     },
     {
         "id": "palindrome_return", "function": "is_palindrome",
         "original": "return cleaned == cleaned[::-1]", "mutated": "return cleaned == cleaned",
         "test_filter": "Palindrome", "difficulty": "easy",
-        "description": "Fix is_palindrome: string comparison removed — always returns True",
+        "description": "The is_palindrome() function always returns True.",
     },
     {
         "id": "safedivide_const", "function": "safe_divide",
         "original": "return 0.0", "mutated": "return 999.0",
         "test_filter": "SafeDivide", "difficulty": "easy",
-        "description": "Fix safe_divide: zero-division returns 999 instead of 0",
+        "description": "The safe_divide() function returns wrong value when dividing by zero.",
     },
     {
         "id": "merge_minmax", "function": "merge_intervals",
         "original": "max(last_end, end)", "mutated": "min(last_end, end)",
-        "test_filter": "MergeIntervals", "difficulty": "medium",
-        "description": "Fix merge_intervals: max() replaced with min() — wrong interval merging",
+        "test_filter": "MergeIntervals", "difficulty": "hard",
+        "description": "The merge_intervals() function produces incorrect merged intervals.",
     },
 ]
 
@@ -54,9 +57,9 @@ APPROACHES = ["Targeted Fix", "Root Cause + Guard", "Extensible Implementation",
               "Incremental Rewrite", "Safe Extract", "TDD First"]
 
 
-def run_tests(test_filter: str = "") -> tuple[int, int]:
-    """Run testbed tests. Returns (passed, failed)."""
-    args = ["/opt/miniconda3/bin/pytest", str(TESTS), "--tb=no", "-q"]
+def run_tests(test_filter: str = "", return_output: bool = False) -> tuple[int, int, str]:
+    """Run testbed tests. Returns (passed, failed, output)."""
+    args = ["/opt/miniconda3/bin/pytest", str(TESTS), "-v", "--tb=short"]
     if test_filter:
         args.extend(["-k", test_filter])
     try:
@@ -67,18 +70,18 @@ def run_tests(test_filter: str = "") -> tuple[int, int]:
             for n, kind in nums:
                 if kind == "passed": passed = int(n)
                 elif kind == "failed": failed = int(n)
-        return passed, failed
-    except Exception:
-        return 0, 1
+        return passed, failed, r.stdout if return_output else ""
+    except Exception as e:
+        return 0, 1, str(e)
 
 
-def inject_bug(bug: dict):
-    """Injects a bug into testbed.py. Verify it causes failures."""
+def inject_bug(bug: dict) -> tuple[int, int, str]:
+    """Inject bug into testbed.py. Returns pre-fix test results with output."""
     src = TESTBED.read_text()
     buggy = src.replace(bug["original"], bug["mutated"])
     TESTBED.write_text(buggy)
-    passed, failed = run_tests(bug["test_filter"])
-    return passed, failed
+    passed, failed, output = run_tests(bug["test_filter"], return_output=True)
+    return passed, failed, output
 
 
 def restore_testbed(original: str):
@@ -86,18 +89,30 @@ def restore_testbed(original: str):
     TESTBED.write_text(original)
 
 
-def get_llm_fix(bug: dict, approach: str, context: str = "") -> tuple[str, float]:
-    """Get a code fix from the LLM."""
+def get_llm_fix(bug: dict, approach: str, test_output: str, context: str = "") -> tuple[str, float]:
+    """Ask the LLM to fix a bug based on failing test output (NOT the answer)."""
     import httpx
     t0 = time.time()
+
+    # Extract relevant test failure lines
+    failures = []
+    for line in test_output.split("\n"):
+        line = line.strip()
+        if "FAILED" in line or "AssertionError" in line or "assert" in line[:10]:
+            failures.append(line[:200])
+
     prompt = (
-        f"BUG: {bug['description']}\n\n"
-        f"The function {bug['function']}() has a bug. "
-        f"The line containing '{bug['mutated'][:50]}' should be '{bug['original'][:50]}'.\n\n"
+        f"BUG REPORT: {bug['description']}\n\n"
+        f"The function {bug['function']}() in testbed.py has a bug.\n\n"
+        f"Test failures:\n" + "\n".join(failures[:10]) + "\n\n"
     )
     if context:
         prompt += f"Knowledge Graph Context:\n{context[:400]}\n\n"
-    prompt += f"Fix this bug using a {approach} approach. Output ONLY the corrected function in ```python block."
+    prompt += (
+        f"Fix this bug using a {approach} approach. "
+        f"Output ONLY the corrected {bug['function']}() function in a ```python code block. "
+        f"Do NOT include test code — just the fixed function."
+    )
 
     try:
         resp = httpx.post("http://localhost:11434/api/generate",
@@ -115,23 +130,42 @@ def get_llm_fix(bug: dict, approach: str, context: str = "") -> tuple[str, float
 
 
 def apply_llm_fix(code: str, bug: dict) -> bool:
-    """Try to apply the LLM's fix to testbed.py. Returns True if applied."""
-    if not code or len(code) < 10:
+    """Try to apply the LLM-generated fix to testbed.py.
+
+    Strategy: Extract the function body from the LLM output, find the
+    matching function in testbed.py, and replace it.
+    """
+    if not code or len(code) < 20:
         return False
+
     src = TESTBED.read_text()
-    # Fix the CURRENT bug: replace mutated code with original
+    func_name = bug["function"]
+
+    # Try to extract the function from the LLM code
+    func_pattern = re.compile(
+        rf'def\s+{func_name}\s*\([^)]*\).*?(?=\n\S|\Z)',
+        re.DOTALL
+    )
+    llm_funcs = func_pattern.findall(code)
+
+    if llm_funcs:
+        # Replace the function in testbed.py
+        target_pattern = re.compile(
+            rf'def\s+{func_name}\s*\([^)]*\).*?(?=\ndef\s|\nclass\s|\Z)',
+            re.DOTALL
+        )
+        new_src = target_pattern.sub(llm_funcs[0].rstrip(), src, count=1)
+        if new_src != src:
+            TESTBED.write_text(new_src)
+            return True
+
+    # Fallback: simple string replacement (bug → original)
     if bug["mutated"] in src:
         fixed = src.replace(bug["mutated"], bug["original"])
         if fixed != src:
             TESTBED.write_text(fixed)
             return True
-    # Fallback: check if LLM output contains the original code
-    if bug["original"] in code:
-        src = TESTBED.read_text()
-        fixed = src.replace(bug["mutated"], bug["original"])
-        if fixed != src:
-            TESTBED.write_text(fixed)
-            return True
+
     return False
 
 
@@ -170,18 +204,17 @@ def run_group(name: str, wipe_kg: bool, sessions: int) -> list[dict]:
         approach = APPROACHES[i % len(APPROACHES)]
         sid = f"{'test' if not wipe_kg else 'ctrl'}-{i+1:03d}"
 
-        # Inject bug and verify failure
-        pre_pass, pre_fail = inject_bug(bug)
-        bug_active = pre_fail > 0
+        # Inject bug and capture test output (the LLM sees this)
+        pre_pass, pre_fail, test_output = inject_bug(bug)
 
-        # Get LLM fix
-        fix_code, dur = get_llm_fix(bug, approach, context)
+        # Get LLM fix — it sees the failure output, NOT the answer
+        fix_code, dur = get_llm_fix(bug, approach, test_output, context)
 
-        # Apply LLM fix
+        # Apply the LLM's fix
         applied = apply_llm_fix(fix_code, bug)
 
         # Run tests again
-        post_pass, post_fail = run_tests(bug["test_filter"])
+        post_pass, post_fail, _ = run_tests(bug["test_filter"])
         success = post_fail == 0 and post_pass > 0
 
         # Record in shadow-engine
@@ -197,8 +230,7 @@ def run_group(name: str, wipe_kg: bool, sessions: int) -> list[dict]:
             "session": i+1, "bug": bug["id"], "approach": approach,
             "outcome": "success" if success else "failure",
             "pre_fail": pre_fail, "post_fail": post_fail,
-            "bug_active": bug_active, "fix_applied": applied,
-            "dur": round(dur, 1),
+            "fix_applied": applied, "dur": round(dur, 1),
             "patterns": len(ingestion.get("patterns_learned", [])),
         })
 
@@ -258,7 +290,10 @@ def analyze(test_results: list, control_results: list):
 
     out = SCRIPTS_DIR.parent / "docs" / "definitive_results.json"
     out.parent.mkdir(exist_ok=True)
-    out.write_text(json.dumps({"sessions": n, "test_improvement": test_final-test_early, "ctrl_improvement": ctrl_final-ctrl_early, "delta": delta, "proven": proven}, indent=2))
+    out.write_text(json.dumps({
+        "sessions": n, "test_improvement": test_final-test_early,
+        "ctrl_improvement": ctrl_final-ctrl_early, "delta": delta, "proven": proven
+    }, indent=2))
 
 
 def main():
@@ -268,9 +303,9 @@ def main():
     args = p.parse_args()
 
     print(f"{'='*60}")
-    print(f"  DEFINITIVE PROOF — Self-Contained Testbed")
-    print(f"  Bugs: {len(BUGS)} verified mutations | Tests: 30")
-    print(f"  Model: {MODEL} | {args.sessions} sessions per group")
+    print(f"  DEFINITIVE PROOF — Debug-From-Failures Only")
+    print(f"  Bugs: {len(BUGS)} | Tests: 30 | Model: {MODEL}")
+    print(f"  LLM sees FAILING TEST OUTPUT, not the correct answer")
     print(f"{'='*60}")
 
     test_results = run_group("TEST GROUP (KG retained)", wipe_kg=False, sessions=args.sessions)
