@@ -27,6 +27,8 @@ def benchmark(name: str, func, iterations: int = 1) -> float:
 
 
 def main():
+    import sys
+    ci_mode = "--ci" in sys.argv
     print("Shadow Engineer — Performance Benchmarks")
     print("=" * 50)
 

@@ -42,6 +42,55 @@ jobs:
           pip install ruff
           ruff check src/ tests/
 
+  benchmark:
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install and benchmark
+        run: |
+          pip install -e .
+          python scripts/benchmark.py --ci 2>&1 | tee benchmark.log || true
+      - name: Check thresholds
+        run: |
+          python -c "
+          import re
+          with open('benchmark.log') as f:
+              text = f.read()
+          results = {}
+          for line in text.split('\n'):
+              m = re.match(r'\s+(\w[^:]+):\s+([\d.]+)ms', line)
+              if m:
+                  key = m.group(1).strip()
+                  results[key] = float(m.group(2))
+          thresholds = {
+              'Bootstrap (incremental)': 30000,
+              'Search (keyword)': 500,
+              'Context generation': 5000,
+              'Impact analysis': 500,
+          }
+          failures = []
+          for name, max_ms in thresholds.items():
+              for rkey, rval in results.items():
+                  if name.lower() in rkey.lower():
+                      actual = rval
+                      status = 'PASS' if actual <= max_ms else 'FAIL'
+                      print(f'{rkey}: {actual:.0f}ms (threshold: {max_ms}ms) [{status}]')
+                      if actual > max_ms:
+                          failures.append(f'{rkey}: {actual:.0f}ms > {max_ms}ms')
+                      break
+          if failures:
+              print(f'BENCHMARK FAILURES: {len(failures)}')
+              for f in failures:
+                  print(f'  - {f}')
+              exit(1)
+          else:
+              print('All benchmarks within thresholds')
+          "
+
   build:
     runs-on: ubuntu-latest
     needs: [test, lint]
