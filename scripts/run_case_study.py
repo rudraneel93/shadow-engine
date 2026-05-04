@@ -84,7 +84,7 @@ def run_sessions(count: int = 50):
             resp = httpx.post(
                 "http://localhost:11434/api/generate",
                 json={
-                    "model": "qwen3:8b",
+                    "model": "qwen3-coder:480b-cloud",
                     "prompt": f"Write a Python function for: {prompt}\n\nOutput ONLY valid Python code with no explanations. Include proper imports and type hints.",
                     "stream": False,
                     "options": {"num_predict": 512},
