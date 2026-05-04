@@ -6,26 +6,26 @@
   "tests": 7,
   "sessions": 48,
   "approaches_tested": 8,
-  "overall_rate": 0.8541666666666666,
-  "patterns": 1,
-  "health": 94,
+  "overall_rate": 0.8333333333333334,
+  "patterns": 62,
+  "health": 93,
   "per_approach": {
     "Targeted Fix": 1.0,
-    "Root Cause + Guard": 0.8333333333333334,
-    "Extensible Implementation": 0.6666666666666666,
+    "Root Cause + Guard": 0.6666666666666666,
+    "Extensible Implementation": 0.8333333333333334,
     "Incremental Rewrite": 0.8333333333333334,
-    "Safe Extract": 0.6666666666666666,
+    "Safe Extract": 1.0,
     "Minimal Viable": 0.8333333333333334,
-    "TDD First": 1.0,
-    "Aggressive Rewrite": 1.0
+    "TDD First": 0.6666666666666666,
+    "Aggressive Rewrite": 0.8333333333333334
   },
   "best_empirical": "Targeted Fix",
-  "engine_recommends": "TDD First",
+  "engine_recommends": "Safe Extract",
   "recommendation_converged": false,
   "compounding": {
     "pass_1_rate": 1.0,
-    "pass_last_rate": 0.625,
-    "delta": -0.375
+    "pass_last_rate": 0.875,
+    "delta": -0.125
   },
   "verdict": "DISPROVEN",
   "per_session": [
@@ -34,104 +34,104 @@
       "approach": "Targeted Fix",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 18.7,
-      "patterns": 1
+      "dur": 40.0,
+      "patterns": 2
     },
     {
       "session": 2,
       "approach": "Root Cause + Guard",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 37.0,
-      "patterns": 1
+      "dur": 45.4,
+      "patterns": 2
     },
     {
       "session": 3,
       "approach": "Extensible Implementation",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 20.9,
-      "patterns": 1
+      "dur": 55.8,
+      "patterns": 2
     },
     {
       "session": 4,
       "approach": "Incremental Rewrite",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 19.5,
-      "patterns": 1
+      "dur": 73.1,
+      "patterns": 2
     },
     {
       "session": 5,
       "approach": "Safe Extract",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 44.2,
-      "patterns": 1
+      "dur": 29.0,
+      "patterns": 3
     },
     {
       "session": 6,
       "approach": "Minimal Viable",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 41.5,
-      "patterns": 1
+      "dur": 27.5,
+      "patterns": 3
     },
     {
       "session": 7,
       "approach": "TDD First",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 29.4,
-      "patterns": 1
+      "dur": 38.8,
+      "patterns": 2
     },
     {
       "session": 8,
       "approach": "Aggressive Rewrite",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 31.6,
-      "patterns": 1
+      "dur": 30.7,
+      "patterns": 2
     },
     {
       "session": 9,
       "approach": "Targeted Fix",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 26.8,
-      "patterns": 1
+      "dur": 63.6,
+      "patterns": 2
     },
     {
       "session": 10,
       "approach": "Root Cause + Guard",
-      "tests": "7/7",
-      "outcome": "success",
-      "dur": 26.6,
-      "patterns": 1
+      "tests": "0/7",
+      "outcome": "failure",
+      "dur": 90.0,
+      "patterns": 3
     },
     {
       "session": 11,
       "approach": "Extensible Implementation",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 53.5,
-      "patterns": 1
+      "dur": 64.4,
+      "patterns": 2
     },
     {
       "session": 12,
       "approach": "Incremental Rewrite",
-      "tests": "7/7",
-      "outcome": "success",
-      "dur": 68.9,
-      "patterns": 1
+      "tests": "0/7",
+      "outcome": "failure",
+      "dur": 90.0,
+      "patterns": 3
     },
     {
       "session": 13,
       "approach": "Safe Extract",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 68.2,
-      "patterns": 1
+      "dur": 80.4,
+      "patterns": 2
     },
     {
       "session": 14,
@@ -139,31 +139,31 @@
       "tests": "0/7",
       "outcome": "failure",
       "dur": 90.0,
-      "patterns": 0
+      "patterns": 3
     },
     {
       "session": 15,
       "approach": "TDD First",
-      "tests": "7/7",
-      "outcome": "success",
-      "dur": 70.4,
-      "patterns": 1
+      "tests": "0/7",
+      "outcome": "failure",
+      "dur": 90.0,
+      "patterns": 3
     },
     {
       "session": 16,
       "approach": "Aggressive Rewrite",
-      "tests": "7/7",
-      "outcome": "success",
-      "dur": 75.5,
-      "patterns": 1
+      "tests": "0/7",
+      "outcome": "failure",
+      "dur": 90.0,
+      "patterns": 3
     },
     {
       "session": 17,
       "approach": "Targeted Fix",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 82.0,
-      "patterns": 1
+      "dur": 85.7,
+      "patterns": 2
     },
     {
       "session": 18,
@@ -171,7 +171,7 @@
       "tests": "0/7",
       "outcome": "failure",
       "dur": 90.0,
-      "patterns": 0
+      "patterns": 3
     },
     {
       "session": 19,
@@ -179,239 +179,239 @@
       "tests": "0/7",
       "outcome": "failure",
       "dur": 90.0,
-      "patterns": 0
+      "patterns": 3
     },
     {
       "session": 20,
       "approach": "Incremental Rewrite",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 74.4,
-      "patterns": 1
+      "dur": 65.2,
+      "patterns": 2
     },
     {
       "session": 21,
       "approach": "Safe Extract",
-      "tests": "0/7",
-      "outcome": "failure",
-      "dur": 90.0,
-      "patterns": 0
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 57.5,
+      "patterns": 2
     },
     {
       "session": 22,
       "approach": "Minimal Viable",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 61.3,
-      "patterns": 1
+      "dur": 12.3,
+      "patterns": 3
     },
     {
       "session": 23,
       "approach": "TDD First",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 53.4,
-      "patterns": 1
+      "dur": 15.8,
+      "patterns": 3
     },
     {
       "session": 24,
       "approach": "Aggressive Rewrite",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 26.0,
-      "patterns": 1
+      "dur": 18.8,
+      "patterns": 3
     },
     {
       "session": 25,
       "approach": "Targeted Fix",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 43.2,
-      "patterns": 1
+      "dur": 21.9,
+      "patterns": 3
     },
     {
       "session": 26,
       "approach": "Root Cause + Guard",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 19.5,
-      "patterns": 1
+      "dur": 12.5,
+      "patterns": 3
     },
     {
       "session": 27,
       "approach": "Extensible Implementation",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 49.1,
-      "patterns": 1
+      "dur": 17.6,
+      "patterns": 3
     },
     {
       "session": 28,
       "approach": "Incremental Rewrite",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 28.9,
-      "patterns": 1
+      "dur": 41.9,
+      "patterns": 2
     },
     {
       "session": 29,
       "approach": "Safe Extract",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 16.2,
-      "patterns": 1
+      "dur": 58.7,
+      "patterns": 2
     },
     {
       "session": 30,
       "approach": "Minimal Viable",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 19.8,
-      "patterns": 1
+      "dur": 46.5,
+      "patterns": 2
     },
     {
       "session": 31,
       "approach": "TDD First",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 18.5,
-      "patterns": 1
+      "dur": 19.0,
+      "patterns": 3
     },
     {
       "session": 32,
       "approach": "Aggressive Rewrite",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 13.2,
-      "patterns": 1
+      "dur": 25.5,
+      "patterns": 3
     },
     {
       "session": 33,
       "approach": "Targeted Fix",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 14.7,
-      "patterns": 1
+      "dur": 17.5,
+      "patterns": 3
     },
     {
       "session": 34,
       "approach": "Root Cause + Guard",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 27.1,
-      "patterns": 1
+      "dur": 59.7,
+      "patterns": 2
     },
     {
       "session": 35,
       "approach": "Extensible Implementation",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 45.1,
-      "patterns": 1
+      "dur": 21.4,
+      "patterns": 3
     },
     {
       "session": 36,
       "approach": "Incremental Rewrite",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 68.3,
-      "patterns": 1
+      "dur": 26.2,
+      "patterns": 3
     },
     {
       "session": 37,
       "approach": "Safe Extract",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 61.9,
-      "patterns": 1
+      "dur": 14.0,
+      "patterns": 3
     },
     {
       "session": 38,
       "approach": "Minimal Viable",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 44.9,
-      "patterns": 1
+      "dur": 19.4,
+      "patterns": 3
     },
     {
       "session": 39,
       "approach": "TDD First",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 47.3,
-      "patterns": 1
+      "dur": 12.9,
+      "patterns": 3
     },
     {
       "session": 40,
       "approach": "Aggressive Rewrite",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 52.9,
-      "patterns": 1
+      "dur": 22.8,
+      "patterns": 3
     },
     {
       "session": 41,
       "approach": "Targeted Fix",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 87.1,
-      "patterns": 1
+      "dur": 39.5,
+      "patterns": 2
     },
     {
       "session": 42,
       "approach": "Root Cause + Guard",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 84.5,
-      "patterns": 1
+      "dur": 55.4,
+      "patterns": 2
     },
     {
       "session": 43,
       "approach": "Extensible Implementation",
-      "tests": "0/7",
-      "outcome": "failure",
-      "dur": 90.0,
-      "patterns": 0
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 51.0,
+      "patterns": 2
     },
     {
       "session": 44,
       "approach": "Incremental Rewrite",
-      "tests": "0/7",
-      "outcome": "failure",
-      "dur": 90.0,
-      "patterns": 0
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 58.4,
+      "patterns": 2
     },
     {
       "session": 45,
       "approach": "Safe Extract",
-      "tests": "0/7",
-      "outcome": "failure",
-      "dur": 90.0,
-      "patterns": 0
+      "tests": "7/7",
+      "outcome": "success",
+      "dur": 65.7,
+      "patterns": 2
     },
     {
       "session": 46,
       "approach": "Minimal Viable",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 80.0,
-      "patterns": 1
+      "dur": 56.8,
+      "patterns": 2
     },
     {
       "session": 47,
       "approach": "TDD First",
-      "tests": "7/7",
-      "outcome": "success",
-      "dur": 64.0,
-      "patterns": 1
+      "tests": "0/7",
+      "outcome": "failure",
+      "dur": 90.0,
+      "patterns": 3
     },
     {
       "session": 48,
       "approach": "Aggressive Rewrite",
       "tests": "7/7",
       "outcome": "success",
-      "dur": 64.3,
-      "patterns": 1
+      "dur": 73.2,
+      "patterns": 2
     }
   ]
 }
