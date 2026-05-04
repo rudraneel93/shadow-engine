@@ -1,4 +1,8 @@
-"""Codebase indexer that parses source files into the knowledge graph using regex AST analysis."""
+"""Codebase indexer that parses source files into the knowledge graph.
+
+Python: AST-based via `ast.parse()` for accurate parsing.
+TypeScript/TSX, JavaScript/JSX, Go, Rust: tree-sitter with regex fallback.
+"""
 
 from __future__ import annotations
 
@@ -12,8 +16,107 @@ from typing import Any
 
 from .models import FileSummary, Symbol, SymbolKind
 
+# ── Tree-sitter availability ────────────────────────────────────
+_TS_AVAILABLE = False
+_TS_PARSERS: dict[str, Any] = {}
+_TS_LANGUAGES: dict[str, Any] = {}
 
-# Pre-compiled regex patterns grouped by file extension
+try:
+    import tree_sitter
+    _TS_AVAILABLE = True
+
+    # Language-specific imports (may fail individually)
+    _lang_imports = [
+        ("tree_sitter_typescript", ".ts", "typescript"),
+        ("tree_sitter_typescript", ".tsx", "tsx"),
+        ("tree_sitter_javascript", ".js", "javascript"),
+        ("tree_sitter_javascript", ".jsx", "javascript"),
+        ("tree_sitter_go", ".go", "go"),
+        ("tree_sitter_rust", ".rs", "rust"),
+    ]
+
+    for module_name, ext, lang_key in _lang_imports:
+        try:
+            mod = __import__(module_name, fromlist=["language"])
+            lang = mod.language()
+            parser = tree_sitter.Parser()
+            parser.language = lang
+            _TS_PARSERS[ext] = parser
+            _TS_LANGUAGES[ext] = lang
+        except Exception:
+            pass  # Language not available, will fall back to regex
+
+except ImportError:
+    pass
+
+# ── Tree-sitter queries per language extension ───────────────────
+_TS_QUERIES: dict[str, str] = {
+    ".ts": """
+        (function_declaration name: (identifier) @name) @func
+        (arrow_function) @arrow
+        (class_declaration name: (type_identifier) @name) @class
+        (interface_declaration name: (type_identifier) @name) @interface
+        (enum_declaration name: (identifier) @name) @enum
+        (type_alias_declaration name: (type_identifier) @name) @type
+        (method_definition name: (property_identifier) @name) @method
+        (variable_declarator
+            name: (identifier) @name
+            value: (arrow_function) @arrow) @const_func
+    """,
+    ".tsx": """
+        (function_declaration name: (identifier) @name) @func
+        (class_declaration name: (type_identifier) @name) @class
+        (interface_declaration name: (type_identifier) @name) @interface
+        (enum_declaration name: (identifier) @name) @enum
+        (method_definition name: (property_identifier) @name) @method
+        (variable_declarator
+            name: (identifier) @name
+            value: (arrow_function) @arrow) @const_func
+        (variable_declarator
+            name: (identifier) @name
+            value: (call_expression
+                function: (identifier) @react_hook)) @component
+    """,
+    ".js": """
+        (function_declaration name: (identifier) @name) @func
+        (class_declaration name: (identifier) @name) @class
+        (method_definition name: (property_identifier) @name) @method
+        (variable_declarator
+            name: (identifier) @name
+            value: (arrow_function) @arrow) @const_func
+        (variable_declarator
+            name: (identifier) @name
+            value: (function_expression) @func_expr) @const_func_expr
+    """,
+    ".jsx": """
+        (function_declaration name: (identifier) @name) @func
+        (class_declaration name: (identifier) @name) @class
+        (method_definition name: (property_identifier) @name) @method
+        (variable_declarator
+            name: (identifier) @name
+            value: (arrow_function) @arrow) @const_func
+    """,
+    ".go": """
+        (function_declaration name: (identifier) @name) @func
+        (method_declaration name: (field_identifier) @name) @method
+        (type_declaration
+            (type_spec name: (type_identifier) @name
+                type: (struct_type))) @struct
+        (type_declaration
+            (type_spec name: (type_identifier) @name
+                type: (interface_type))) @interface
+    """,
+    ".rs": """
+        (function_item name: (identifier) @name) @func
+        (struct_item name: (type_identifier) @name) @struct
+        (trait_item name: (type_identifier) @name) @trait
+        (enum_item name: (type_identifier) @name) @enum
+        (type_item name: (type_identifier) @name) @type
+        (impl_item trait: (type_identifier)? @trait_name) @impl
+    """,
+}
+
+# ── Pre-compiled regex patterns (fallback) ──────────────────────
 _COMPILED_PATTERNS: dict[str, list[tuple[re.Pattern[str], SymbolKind]]] = {
     ".py": [
         (re.compile(r"^def\s+(\w+)\s*\(([^)]*)\)\s*(?:->\s*(\S+))?\s*:"), SymbolKind.FUNCTION),
@@ -167,7 +270,75 @@ class CodebaseIndexer:
                 # Fall back to regex parsing for files with syntax errors
                 pass
 
-        if ast_symbols:
+        # Phase 5: Tree-sitter based indexing for TS/JS/Go/Rust (falls back to regex)
+        ts_symbols: list[dict[str, Any]] = []
+        if not ast_symbols and language in _TS_PARSERS:
+            try:
+                parser = _TS_PARSERS[language]
+                tree = parser.parse(bytes(content, "utf-8"))
+                query_str = _TS_QUERIES.get(language, "")
+
+                if query_str and tree_sitter:
+                    lang_obj = _TS_LANGUAGES.get(language)
+                    if lang_obj:
+                        query = lang_obj.query(query_str)
+                        captures = query.captures(tree.root_node)
+
+                        seen_names: set[str] = set()
+                        for node, tag in captures:
+                            name_node = node.child_by_field_name("name")
+                            if name_node is None:
+                                continue
+                            name = name_node.text.decode("utf-8") if name_node.text else ""
+                            if not name or name in seen_names:
+                                continue
+                            seen_names.add(name)
+
+                            # Map capture tag to SymbolKind
+                            kind_map: dict[str, SymbolKind] = {
+                                "func": SymbolKind.FUNCTION,
+                                "arrow": SymbolKind.FUNCTION,
+                                "const_func": SymbolKind.FUNCTION,
+                                "const_func_expr": SymbolKind.FUNCTION,
+                                "method": SymbolKind.METHOD,
+                                "class": SymbolKind.CLASS,
+                                "struct": SymbolKind.CLASS,
+                                "interface": SymbolKind.INTERFACE,
+                                "trait": SymbolKind.INTERFACE,
+                                "enum": SymbolKind.ENUM,
+                                "type": SymbolKind.TYPE_ALIAS,
+                                "component": SymbolKind.FUNCTION,
+                                "impl": SymbolKind.CLASS,
+                            }
+                            kind = kind_map.get(tag, SymbolKind.FUNCTION)
+
+                            start_line = node.start_point[0] + 1
+                            end_line = node.end_point[0] + 1
+
+                            sig_line = lines[start_line - 1] if start_line - 1 < len(lines) else ""
+                            ts_symbols.append({
+                                "name": name,
+                                "kind": kind,
+                                "line_start": start_line,
+                                "line_end": end_line,
+                                "signature": sig_line.strip()[:200],
+                                "docstring": self._extract_docstring(lines, start_line - 1, language),
+                            })
+            except Exception:
+                pass  # Tree-sitter failed, fall back to regex
+
+        if ts_symbols:
+            for sym_data in ts_symbols:
+                symbol = Symbol(
+                    id=Symbol.compute_id(relative, sym_data["name"]),
+                    name=sym_data["name"], kind=sym_data["kind"], file_path=relative,
+                    line_start=sym_data["line_start"], line_end=sym_data["line_end"],
+                    signature=sym_data["signature"], docstring=sym_data["docstring"],
+                )
+                self._symbols[symbol.id] = symbol
+                file_summary.symbols.append(symbol.id)
+
+        elif ast_symbols:
             for sym_data in ast_symbols:
                 symbol = Symbol(
                     id=Symbol.compute_id(relative, sym_data["name"]),

@@ -60,6 +60,12 @@ dev = [
     "mypy>=1.10.0",
 ]
 redis = ["redis>=5.0.0"]
+tree-sitter-langs = [
+    "tree-sitter-typescript>=0.23.0",
+    "tree-sitter-javascript>=0.23.0",
+    "tree-sitter-go>=0.23.0",
+    "tree-sitter-rust>=0.23.0",
+]
 
 [project.scripts]
 shadow-engine = "shadow_engine.main:cli_main"
