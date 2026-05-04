@@ -8,7 +8,7 @@ LABEL org.opencontainers.image.source="https://github.com/shadow-engine/shadow-e
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential curl && rm -rf /var/lib/apt/lists/*
 
-RUN useradd --create-home --shell /bin/bash shadow
+RUN useradd -m -s /bin/bash shadow 2>/dev/null || useradd -m -s /bin/bash -g shadow shadow 2>/dev/null || true
 USER shadow
 WORKDIR /home/shadow/app
 
