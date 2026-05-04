@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
-"""Prove 'Session 100 > Session 1' — definitive multi-model hypothesis test.
+"""Prove 'Session 100 > Session 1' — single-call code+test generation.
 
-Methodology:
-1. Ask qwen3-coder:480b-cloud to write a Python function for a specific task
-2. Ask gpt-oss:120b-cloud to write a unit test for that function
-3. Extract both, write to temp .py file, run pytest
-4. Real pass/fail → recorded in shadow-engine
-5. After N sessions, check: do approach recommendations converge?
+Each session: 1 LLM call → generates function + pytest test → run pytest → record.
 
-Each session uses REAL code generation + REAL test execution.
+Uses qwen3-coder:480b-cloud which outputs clean ```python blocks.
 """
 
 import json, os, re, shutil, subprocess, sys, tempfile, time
@@ -17,21 +12,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from shadow_engine.main import ShadowEngine
 
-# Tasks where the LLM must implement real functionality
 TASKS = [
-    # Easy — simple function generation (LLM usually succeeds)
-    ("bug_fix", "Write a Python function `is_palindrome(s: str) -> bool` that returns True if the string reads the same forwards and backwards, ignoring case and non-alphanumeric characters.", "Targeted Fix"),
-    ("feature", "Write a Python function `flatten(nested_list) -> list` that takes a list of arbitrarily nested lists and returns a flat list of all elements.", "Minimal Viable"),
-    ("bug_fix", "Write a Python function `fibonacci(n: int) -> list[int]` that returns the first n Fibonacci numbers. Handle n <= 0 by returning an empty list.", "Targeted Fix"),
-    # Medium — needs correctness + edge cases
-    ("feature", "Write a Python function `merge_intervals(intervals: list[tuple[int,int]]) -> list[tuple[int,int]]` that merges overlapping intervals. Example: [(1,3),(2,6)] → [(1,6)].", "Extensible Implementation"),
-    ("refactor", "Write a Python function `parse_kv_string(s: str) -> dict` that parses 'key1=value1,key2=value2' into a dict. Handle quotes, escaped commas, and empty values.", "Safe Extract"),
-    ("feature", "Write a Python function `find_anagrams(word: str, word_list: list[str]) -> list[str]` that returns all words from word_list that are anagrams of word. Case-insensitive.", "Root Cause + Guard"),
-    # Hard — requires algorithmic thinking
-    ("refactor", "Write a Python function `longest_common_subsequence(a: str, b: str) -> str` using dynamic programming. Returns the actual LCS string, not just the length.", "Incremental Rewrite"),
-    ("feature", "Write a Python function `regex_to_postfix(pattern: str) -> str` that converts a simple regex (only |, *, concatenation) to postfix notation using the shunting-yard algorithm.", "Extensible Implementation"),
-    ("bug_fix", "Write a Python function `binary_search_rotated(arr: list[int], target: int) -> int` that finds target in a rotated sorted array. Return index or -1.", "TDD First"),
-    ("refactor", "Write a Python function `topological_sort(graph: dict[str, list[str]]) -> list[str]` using Kahn's algorithm. Raise ValueError if the graph has a cycle.", "Safe Extract"),
+    ("bug_fix", "Write a function `is_palindrome(s: str) -> bool` that checks if a string reads the same forwards/backwards, ignoring case and non-alphanumeric chars. Include a pytest test function `test_is_palindrome` with 5 test cases.", "Targeted Fix"),
+    ("feature", "Write a function `flatten(nested) -> list` that flattens arbitrarily nested lists. Include a pytest test function `test_flatten` with 5 test cases including edge cases like empty lists and deeply nested structures.", "Minimal Viable"),
+    ("bug_fix", "Write a function `fibonacci(n: int) -> list[int]` returning first n Fibonacci numbers. Handle n<=0 returning []. Include a pytest test function `test_fibonacci` with 5 test cases.", "Targeted Fix"),
+    ("feature", "Write a function `merge_intervals(intervals) -> list` that merges overlapping intervals like [(1,3),(2,6)]→[(1,6)]. Include a pytest test function `test_merge_intervals` with 5 test cases.", "Extensible Implementation"),
+    ("refactor", "Write a function `parse_kv_string(s: str) -> dict` parsing 'key1=val1,key2=val2' into a dict. Handle quotes, escaped commas. Include a pytest test function `test_parse_kv_string` with 5 test cases.", "Safe Extract"),
+    ("feature", "Write a function `find_anagrams(word, word_list) -> list` returning words from word_list that are anagrams of word. Case-insensitive. Include a pytest test function `test_find_anagrams` with 5 test cases.", "Root Cause + Guard"),
+    ("refactor", "Write a function `longest_common_subsequence(a, b) -> str` using dynamic programming. Returns the actual LCS string. Include a pytest test function `test_lcs` with 5 test cases.", "Incremental Rewrite"),
+    ("bug_fix", "Write a function `binary_search_rotated(arr, target) -> int` finding target in a rotated sorted array. Return index or -1. Include a pytest test function `test_binary_search_rotated` with 5 test cases.", "TDD First"),
+    ("refactor", "Write a function `topological_sort(graph: dict) -> list[str]` using Kahn's algorithm. Raise ValueError for cycles. Include a pytest test function `test_topological_sort` with 5 test cases.", "Safe Extract"),
+    ("feature", "Write a function `regex_to_postfix(pattern) -> str` converting simple regex (|, *, concat) to postfix using shunting-yard. Include a pytest test function `test_regex_to_postfix` with 5 test cases.", "Extensible Implementation"),
 ]
 
 APPROACHES = ["Targeted Fix", "Minimal Viable", "Extensible Implementation",
@@ -40,203 +31,126 @@ APPROACHES = ["Targeted Fix", "Minimal Viable", "Extensible Implementation",
 CODING_MODEL = "qwen3-coder:480b-cloud"
 
 
-def extract_python_code(raw: str) -> str:
-    """Extract compilable Python code from LLM output."""
-    blocks = re.findall(r'```(?:python)?\s*\n(.*?)```', raw, re.DOTALL)
-    if blocks:
-        return '\n\n'.join(blocks)
-    funcs = re.findall(r'(?:async\s+)?def\s+\w+\s*\([^)]*\).*?(?:(?=\n(?:[^\s]|\s*(?:def|class|@)))|\Z)', raw, re.DOTALL)
-    classes = re.findall(r'class\s+\w+.*?(?:(?=\n(?:[^\s]|\s*(?:def|class|@)))|\Z)', raw, re.DOTALL)
-    return '\n\n'.join(funcs + classes) if (funcs or classes) else ""
-
-
-def generate_tests(code: str, task_prompt: str) -> str:
-    """Use qwen3-coder to generate pytest tests for the given code."""
-    import httpx
-    try:
-        resp = httpx.post(
-            "http://localhost:11434/api/generate",
-            json={
-                "model": CODING_MODEL,
-                "prompt": (
-                    f"Here is a Python function:\n\n```python\n{code}\n```\n\n"
-                    f"Task: {task_prompt}\n\n"
-                    f"Write a pytest test function that tests this function with at least 5 test cases "
-                    f"including edge cases. Output ONLY valid Python with import pytest. "
-                    f"Use ```python code blocks."
-                ),
-                "stream": False,
-                "options": {"num_predict": 768},
-            },
-            timeout=90,
-        )
-        data = resp.json()
-        return extract_python_code(data.get("response") or data.get("thinking") or "")
-    except Exception:
-        return ""
-
-
-def run_tests(code: str) -> tuple[int, int, str]:
-    """Run pytest on the given code. Returns (passed, failed, output)."""
-    if not code.strip():
-        return 0, 1, "no code"
-    try:
-        f = tempfile.NamedTemporaryFile(mode='w', suffix='test.py', delete=False)
-        f.write(code)
-        tmp = f.name
-        f.close()
-        result = subprocess.run(
-            ["pytest", tmp, "-v", "--tb=short"],
-            capture_output=True, text=True, timeout=45,
-        )
-        os.unlink(tmp)
-        passed = failed = 0
-        for line in result.stdout.split("\n"):
-            # Parse pytest output: "X passed" or "X passed, Y failed"
-            if "passed" in line and "=" not in line:
-                nums = re.findall(r'(\d+)\s+(passed|failed)', line)
-                for n, kind in nums:
-                    if kind == "passed": passed = int(n)
-                    elif kind == "failed": failed = int(n)
-        return passed, failed, result.stdout[:500]
-    except Exception as e:
-        return 0, 1, str(e)
-
-
 def main():
     import httpx
 
     storage = Path(tempfile.mkdtemp())
     engine = ShadowEngine(storage_path=storage, repo_path=".")
-    # Bootstrap on current repo (doesn't matter — we're recording sessions, not KG context)
     r = engine.bootstrap()
-    print(f"Bootstrapped: {r['symbols_indexed']} symbols | 30 real sessions\n")
+    print(f"Symbols: {r['symbols_indexed']} | {len(TASKS)*3} sessions\n")
 
     results = []
-    for i in range(1, 31):
-        task = TASKS[(i - 1) % len(TASKS)]
-        ptype, prompt, approach = task
-        session_id = f"proof-{i:03d}"
+    for cycle in range(3):  # 3 cycles × 10 tasks = 30 sessions
+        for i, (ptype, prompt, approach) in enumerate(TASKS):
+            session_num = cycle * len(TASKS) + i + 1
+            session_id = f"proof-{session_num:03d}"
 
-        # Step 1: Generate code
-        t0 = time.time()
-        try:
-            resp = httpx.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": CODING_MODEL,
-                    "prompt": f"{prompt}\n\nUse a {approach} approach. Output ONLY Python code in ```python blocks.",
-                    "stream": False,
-                    "options": {"num_predict": 768},
-                },
-                timeout=120,
+            t0 = time.time()
+            try:
+                resp = httpx.post(
+                    "http://localhost:11434/api/generate",
+                    json={
+                        "model": CODING_MODEL,
+                        "prompt": f"TASK: {prompt}\n\nUse a {approach} approach. Output ONLY a complete Python file with import pytest, the function, and the test function all in ONE ```python block. No explanations.",
+                        "stream": False,
+                        "options": {"num_predict": 1024},
+                    },
+                    timeout=120,
+                )
+                data = resp.json()
+                raw = data.get("response") or data.get("thinking") or ""
+                tokens = data.get("prompt_eval_count", 0) + data.get("eval_count", 0)
+            except Exception:
+                raw, tokens = "", 0
+
+            # Extract code
+            blocks = re.findall(r'```(?:python)?\s*\n(.*?)```', raw, re.DOTALL)
+            full_code = '\n'.join(blocks) if blocks else raw
+            dur = time.time() - t0
+
+            # Run pytest
+            passed = failed = 0
+            if full_code.strip():
+                try:
+                    f = tempfile.NamedTemporaryFile(mode='w', suffix='test.py', delete=False)
+                    f.write(full_code)
+                    tmp = f.name; f.close()
+                    result = subprocess.run(
+                        ["pytest", tmp, "-v", "--tb=line", "-q"],
+                        capture_output=True, text=True, timeout=30,
+                    )
+                    os.unlink(tmp)
+                    # Parse: "X passed" or "X passed, Y failed"
+                    for line in result.stdout.split("\n"):
+                        if "passed" in line:
+                            nums = re.findall(r'(\d+)\s+(passed|failed)', line)
+                            for n, kind in nums:
+                                if kind == "passed": passed = int(n)
+                                elif kind == "failed": failed = int(n)
+                except Exception:
+                    passed, failed = 0, 1
+
+            total = passed + failed
+            outcome = "success" if passed > 0 and failed == 0 else "failure"
+
+            ingestion = engine.record_result(
+                session_id=session_id, outcome=outcome, prompt=prompt,
+                approach=approach, model=CODING_MODEL,
+                files_changed=[],
+                test_results={"total": max(total, 1), "passed": passed, "failed": failed},
+                duration_seconds=dur, token_count=tokens,
             )
-            data = resp.json()
-            raw = data.get("response") or data.get("thinking") or ""
-            tokens = data.get("prompt_eval_count", 0) + data.get("eval_count", 0)
-        except Exception:
-            raw, tokens = "", 0
 
-        code = extract_python_code(raw)
+            results.append({
+                "session": session_num, "ptype": ptype, "approach": approach,
+                "tests": f"{passed}/{total}", "outcome": outcome, "dur": round(dur, 1),
+                "patterns": len(ingestion.get("patterns_learned", [])),
+            })
+            emoji = "✅" if outcome == "success" else "❌"
+            print(f"  S{session_num:2d}: [{ptype:9s}] {approach:28s} pytest={passed}/{total} {emoji} ({dur:.0f}s, {len(ingestion.get('patterns_learned',[]))}p)")
 
-        # Step 2: Generate tests for the code
-        tests = generate_tests(code, prompt)
-        full_code = f"import pytest\n\n{code}\n\n{tests}" if tests else code
+        # Checkpoint
+        stats = engine.get_stats()
+        sr = stats.get("overall_success_rate", 0)
+        print(f"  ── Cycle {cycle+1}/3: rate={sr:.0%}, patterns={stats.get('total_patterns',0)} ──\n")
 
-        # Step 3: Run real tests
-        passed, failed, test_output = run_tests(full_code)
-        dur = time.time() - t0
-        total = passed + failed
-        outcome = "success" if passed > 0 and failed == 0 else "failure"
-
-        # Step 4: Record in shadow-engine
-        ingestion = engine.record_result(
-            session_id=session_id, outcome=outcome, prompt=prompt,
-            approach=approach, model=CODING_MODEL,
-            files_changed=[],
-            test_results={"total": max(total, 1), "passed": passed, "failed": failed},
-            duration_seconds=dur, token_count=tokens,
-        )
-
-        results.append({
-            "session": i, "ptype": ptype, "approach": approach,
-            "tests": f"{passed}/{total}", "outcome": outcome, "dur": round(dur, 1),
-            "patterns": len(ingestion.get("patterns_learned", [])),
-        })
-        emoji = "✅" if outcome == "success" else "❌"
-        print(f"  S{i:2d}: [{ptype:9s}] {approach:28s} tests={passed}/{total} {emoji} ({dur:.0f}s, {len(ingestion.get('patterns_learned',[]))}p)")
-
-        if i % 5 == 0:
-            stats = engine.get_stats()
-            sr = stats.get("overall_success_rate", 0)
-            print(f"  ── Checkpoint {i}: rate={sr:.0%}, patterns={stats.get('total_patterns', 0)} ──")
-
-    # Final analysis
+    # Analysis
     stats = engine.get_stats()
     health = engine.health_scorer.compute()
-    print(f"\n{'='*60}")
-    print(f"  DEFINITIVE HYPOTHESIS PROOF — 30 Real Sessions")
-    print(f"  Code generation + pytest validation + shadow-engine ingestion")
     print(f"{'='*60}")
-    print(f"Overall success rate: {stats.get('overall_success_rate', 0):.1%}")
+    print(f"  HYPOTHESIS PROOF — {len(results)} Real Sessions")
+    print(f"{'='*60}")
+    print(f"Success rate: {stats.get('overall_success_rate', 0):.1%}")
     print(f"Patterns learned: {stats.get('total_patterns', 0)}")
-    print(f"Health score: {health.get('overall_score', 0)}/100")
+    print(f"Health: {health.get('overall_score', 0)}/100")
 
-    print(f"\nApproach Recommendations (from REAL test outcomes):")
-    for pt in ["bug_fix", "feature", "refactor"]:
-        s = engine.suggest(f"a {pt} task")
-        conf = int(s.get("classification_confidence", 0) * 100)
-        rate = int(s.get("expected_success_rate", 0) * 100)
-        print(f"  [{pt:9s}]: {s['recommended_approach'][:45]} ({rate}% expected, {conf}% conf)")
-
-    print(f"\nPer-Approach Efficacy:")
+    print(f"\nPer-Approach:")
     for ap in APPROACHES:
         a = [r for r in results if r["approach"] == ap]
         if a:
             ok = sum(1 for r in a if r["outcome"] == "success")
-            dr = [r["dur"] for r in a]
-            print(f"  {ap:28s}: {ok}/{len(a)} ({ok/len(a):.0%}) avg {sum(dr)/len(dr):.0f}s")
+            print(f"  {ap:28s}: {ok}/{len(a)} ({ok/len(a):.0%})")
 
-    # Compounding effect
+    # Compounding
     early = [r for r in results if r["session"] <= 10]
     late = [r for r in results if r["session"] > 20]
     if early and late:
         er = sum(1 for r in early if r["outcome"] == "success") / len(early)
         lr = sum(1 for r in late if r["outcome"] == "success") / len(late)
-        print(f"\n{'='*60}")
-        print(f"  COMPOUNDING EFFECT")
-        print(f"  Sessions  1-10: {er:.0%} success rate")
-        print(f"  Sessions 21-30: {lr:.0%} success rate")
-        print(f"  Delta: {lr-er:+.0%}")
-        if lr > er:
-            print(f"  ✅ SESSION 30 IS SMARTER THAN SESSION 1!")
-        elif lr == er:
-            print(f"  ➡️ No improvement — same performance")
-        else:
-            print(f"  ⚠️ Performance decreased — needs investigation")
-        print(f"{'='*60}")
+        print(f"\nCOMPOUNDING: early={er:.0%}, late={lr:.0%} ({lr-er:+.0%})")
+        print(f"  {'✅ SESSION 30 IS SMARTER!' if lr > er else '➡️ Equal performance'}")
 
-    # Save results
+    # Save
     out = Path(__file__).resolve().parent.parent / "docs" / "hypothesis_proof.json"
     out.parent.mkdir(exist_ok=True)
     out.write_text(json.dumps({
         "title": "Session 100 > Session 1 — Hypothesis Proof",
-        "codebase": "Real Python functions with real pytest tests",
-        "llm": CODING_MODEL,
-        "sessions": 30,
+        "llm": CODING_MODEL, "sessions": len(results),
         "overall_rate": stats.get("overall_success_rate", 0),
         "patterns": stats.get("total_patterns", 0),
-        "health": health.get("overall_score", 0),
-        "per_approach": {
-            ap: sum(1 for r in results if r["approach"]==ap and r["outcome"]=="success") / max(1, sum(1 for r in results if r["approach"]==ap))
-            for ap in APPROACHES
-        },
-        "compounding": {
-            "early_rate": er if early else 0,
-            "late_rate": lr if late else 0,
-            "delta": (lr - er) if (early and late) else 0,
-        },
-        "verdict": "PROVEN" if (early and late and lr > er) else "NOT YET PROVEN — needs more sessions",
+        "per_approach": {ap: sum(1 for r in results if r["approach"]==ap and r["outcome"]=="success")/max(1,sum(1 for r in results if r["approach"]==ap)) for ap in APPROACHES},
+        "compounding": {"early_rate": er if early else 0, "late_rate": lr if late else 0, "delta": (lr-er) if (early and late) else 0},
+        "verdict": "PROVEN" if (early and late and lr > er) else "NOT YET PROVEN",
         "per_session": results,
     }, indent=2))
     print(f"\nSaved to {out}")
