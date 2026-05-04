@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .knowledge_graph.indexer import CodebaseIndexer
+from .knowledge_graph.indexer import CodebaseIndexer, compute_file_hash
 from .knowledge_graph.store import KnowledgeGraphStore
 from .laboratory.experiment import ExperimentRunner
 from .learning.engine import LearningEngine
@@ -122,7 +122,6 @@ class ShadowEngine:
         t0 = time.time()
 
         # Fix #2.3: Incremental indexing — only reindex changed files
-        from .knowledge_graph.indexer import compute_file_hash
 
         symbols, files = self.indexer.index()
 
