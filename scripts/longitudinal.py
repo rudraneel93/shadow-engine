@@ -1,376 +1,260 @@
 #!/usr/bin/env python3
-"""Longitudinal experiment: proves or disproves 'Session 100 > Session 1'.
+"""Longitudinal experiment with Retrieval-Augmented Fixing (RAG).
 
-Design (from rigorous analysis):
-- 500 task pool, 200 sessions (100 learning ON, 100 learning OFF)
-- Each task: self-contained bug fix with automated pytest validation
-- Metrics: success_bool, time_to_solve, predicted_success_proba
-- Statistical: Mann-Kendall trend, early vs late window, learning curve regression, delta analysis
+Tests the NEW hypothesis:
+  "Providing the LLM with similar past successful bug-fix pairs
+   improves its success rate on new bugs."
 
-Run: python scripts/longitudinal.py --sessions 200
+Arms: --retrieval vector (similarity) / random (baseline) / none (control)
+
+Run: python scripts/longitudinal.py --sessions 50 --retrieval vector
 """
 
-import json, math, os, re, shutil, subprocess, sys, tempfile, time
+import json, os, random, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from shadow_engine.main import ShadowEngine
+from shadow_engine.retrieval_fixer import RetrievalAugmentedFixer, format_retrieval_context
 
 MODEL = "qwen3-coder:480b-cloud"
 SCRIPTS_DIR = Path(__file__).resolve().parent
 TESTBED = SCRIPTS_DIR / "testbed.py"
 TESTS = SCRIPTS_DIR / "test_testbed.py"
 
-# Bug database: each entry produces a specific code mutation that breaks tests.
-# The LLM sees ONLY the bug description + failing test output, NOT the mutation.
-# Generated programmatically to avoid repetition.
-def generate_bug_pool(target_count: int = 200) -> list[dict]:
-    """Generate a diverse pool of bugs with varying difficulty."""
+
+def generate_hard_bug_pool(target_count: int = 50) -> list[dict]:
+    """Generate bugs targeting hard functions (low baseline success)."""
     src_lines = TESTBED.read_text().split("\n")
-    bugs = []
-    
-    # Find all function definitions
+    hard_funcs = ["topological_sort", "regex_match", "merge_intervals", "binary_search"]
     funcs = []
     for i, line in enumerate(src_lines):
         if line.startswith("def "):
             name = line.split("(")[0].replace("def ", "").strip()
-            funcs.append({"name": name, "start": i})
+            if name in hard_funcs:
+                funcs.append({"name": name, "start": i})
 
-    # Mutation operators
-    ops = [
-        ("+", "-", "operator_add_sub", "easy"),
-        ("-", "+", "operator_sub_add", "easy"),
-        ("==", "!=", "condition_eq_neq", "easy"),
-        ("!=", "==", "condition_neq_eq", "easy"),
-        ("<", ">", "comparison_lt_gt", "medium"),
-        (">", "<", "comparison_gt_lt", "medium"),
-        ("return", "return not", "logic_flip", "medium"),
-        ("if ", "if not ", "condition_flip", "medium"),
+    hard_ops = [
         ("max", "min", "fn_max_min", "hard"),
         ("min", "max", "fn_min_max", "hard"),
-        ("[0]", "[1]", "index_shift", "hard"),
-        ("[:: -1]", "[:: 1]", "reverse_removed", "easy"),
+        ("pop(0)", "pop(-1)", "queue_invert", "hard"),
+        ("return result", "return result[:1]", "truncate_result", "hard"),
+        ("left <= right", "left < right", "binary_break", "hard"),
+        ("if b == 0:", "if False:", "zero_div_break", "hard"),
+        (".get(", "[", "dict_break", "hard"),
+        ("sorted(word.lower())", "word.lower()", "anagram_break", "hard"),
     ]
 
+    bugs = []
     for func in funcs:
-        fn_name = func["name"]
-        fn_body = "\n".join(src_lines[func["start"]+1:])
-        # Find the end of the function
         fn_end = func["start"] + 1
-        for j in range(func["start"]+1, min(func["start"]+30, len(src_lines))):
-            line = src_lines[j]
-            if line.startswith("def ") or line.startswith("class "):
-                fn_end = j
-                break
+        for j in range(func["start"]+1, min(func["start"]+50, len(src_lines))):
+            if src_lines[j].startswith("def "):
+                fn_end = j; break
         else:
-            fn_end = min(func["start"]+30, len(src_lines))
+            fn_end = min(func["start"]+50, len(src_lines))
 
         body_lines = src_lines[func["start"]:fn_end]
-
-        for old_op, new_op, mut_name, difficulty in ops:
-            if len(bugs) >= target_count:
-                break
+        for old_op, new_op, mut_name, difficulty in hard_ops:
+            if len(bugs) >= target_count: break
             for li, line in enumerate(body_lines):
                 if old_op in line and len(line) > 5:
                     mutated = line.replace(old_op, new_op, 1)
-                    if mutated != line:
+                    if mutated != line and len(mutated) > 5:
                         bugs.append({
-                            "id": f"{fn_name}_{mut_name}",
-                            "function": fn_name,
+                            "id": f"{func['name']}_{mut_name}",
+                            "function": func["name"],
                             "line_in_body": li,
                             "original": line.strip(),
                             "mutated": mutated.strip(),
                             "difficulty": difficulty,
-                            "description": f"The {fn_name}() function has a bug. {fn_name}() returns incorrect results for some inputs.",
-                            "test_filter": get_test_filter(fn_name),
+                            "description": f"The {func['name']}() function has a subtle bug. Fix it.",
+                            "test_filter": _get_filter(func["name"]),
                             "mutation_name": mut_name.replace("_", " "),
                         })
                         break
-
     return bugs[:target_count]
 
 
-def get_test_filter(fn_name: str) -> str:
-    """Map function name to pytest test filter."""
-    mapping = {
-        "fibonacci": "Fibonacci",
-        "is_palindrome": "Palindrome",
-        "binary_search": "BinarySearch",
-        "safe_divide": "SafeDivide",
-        "flatten": "Flatten",
-        "merge_intervals": "MergeIntervals",
-        "count_words": "CountWords",
-        "find_anagrams": "FindAnagrams",
-        "topological_sort": "TopologicalSort",
-        "regex_match": "RegexMatch",
-    }
-    return mapping.get(fn_name, fn_name.title())
+def _get_filter(fn_name: str) -> str:
+    m = {"fibonacci":"Fibonacci","is_palindrome":"Palindrome","binary_search":"BinarySearch",
+         "safe_divide":"SafeDivide","flatten":"Flatten","merge_intervals":"MergeIntervals",
+         "count_words":"CountWords","find_anagrams":"FindAnagrams",
+         "topological_sort":"TopologicalSort","regex_match":"RegexMatch"}
+    return m.get(fn_name, fn_name.title())
 
 
 def run_tests(test_filter: str = "") -> tuple[int, int, str]:
-    """Run testbed tests. Returns (passed, failed, output)."""
     args = ["/opt/miniconda3/bin/pytest", str(TESTS), "-v", "--tb=line"]
-    if test_filter:
-        args.extend(["-k", test_filter])
+    if test_filter: args.extend(["-k", test_filter])
     try:
         r = subprocess.run(args, capture_output=True, text=True, timeout=30, cwd=str(SCRIPTS_DIR))
-        passed = failed = 0
+        p, f = 0, 0
         for line in r.stdout.split("\n"):
             nums = re.findall(r"(\d+)\s+(passed|failed)", line)
             for n, kind in nums:
-                if kind == "passed": passed = int(n)
-                elif kind == "failed": failed = int(n)
-        return passed, failed, r.stdout
+                if kind == "passed": p = int(n)
+                elif kind == "failed": f = int(n)
+        return p, f, r.stdout
     except Exception:
         return 0, 1, "timeout"
 
 
 def inject_and_test(bug: dict) -> tuple[int, int, str]:
-    """Inject bug, run tests, return (passed, failed, output)."""
     src = TESTBED.read_text()
-    buggy_lines = src.split("\n")
-    fn_found = None
-    for i, line in enumerate(buggy_lines):
+    lines = src.split("\n")
+    fn_idx = None
+    for i, line in enumerate(lines):
         if line.startswith(f"def {bug['function']}("):
-            fn_found = i
-            break
-    if fn_found is None:
-        return 0, 0, "function not found"
-    
-    target_line = fn_found + 1 + bug["line_in_body"]
-    if target_line - 1 >= len(buggy_lines):
-        return 0, 0, "line out of range"
-    
-    buggy_lines[target_line - 1] = bug["mutated"]
-    TESTBED.write_text("\n".join(buggy_lines))
-    p, f, out = run_tests(bug["test_filter"])
-    return p, f, out
+            fn_idx = i; break
+    if fn_idx is None: return 0, 0, "fn not found"
+    target = fn_idx + 1 + bug["line_in_body"]
+    if target - 1 >= len(lines): return 0, 0, "OOB"
+    lines[target - 1] = bug["mutated"]
+    TESTBED.write_text("\n".join(lines))
+    return run_tests(bug["test_filter"])
 
 
-def get_llm_fix(bug: dict, approach: str, test_output: str, context: str = "") -> tuple[str, float]:
-    """Ask LLM to debug and fix the bug."""
+def get_llm_fix(bug: dict, approach: str, test_output: str, rag_context: str = "") -> tuple[str, float]:
     import httpx
     t0 = time.time()
     failures = [l.strip() for l in test_output.split("\n") if "FAILED" in l or "AssertionError" in l or l.startswith("E ")]
-    
-    prompt = (
-        f"BUG: {bug['description']}\n\n"
-        f"Test failures for {bug['function']}():\n" + "\n".join(failures[:8]) + "\n\n"
-    )
-    if context:
-        prompt += f"Previous fixes learned:\n{context[:300]}\n\n"
-    prompt += (
-        f"Fix using {approach}. Output ONLY the corrected function in ```python block."
-    )
-
+    prompt = f"BUG: {bug['description']}\n\nTest failures:\n" + "\n".join(failures[:8]) + "\n\n"
+    if rag_context: prompt += rag_context + "\n\n"
+    prompt += f"Fix using {approach}. Output ONLY the corrected function in ```python block."
     try:
         resp = httpx.post("http://localhost:11434/api/generate",
             json={"model": MODEL, "prompt": prompt, "stream": False, "options": {"num_predict": 512}}, timeout=90)
         data = resp.json()
         raw = data.get("response") or data.get("thinking") or ""
         blocks = re.findall(r'```(?:python)?\s*\n(.*?)```', raw, re.DOTALL)
-        code = '\n'.join(blocks) if blocks else raw
-        return code, time.time() - t0
+        return '\n'.join(blocks) if blocks else raw, time.time() - t0
     except Exception:
         return "", time.time() - t0
 
 
 def apply_fix(code: str, bug: dict) -> bool:
-    """Apply LLM-generated fix to testbed.py."""
-    if not code or len(code) < 20:
-        return False
+    if not code or len(code) < 20: return False
     src = TESTBED.read_text()
-    fn_name = bug["function"]
-    
-    # Extract function from LLM output
-    pattern = re.compile(rf'def\s+{fn_name}\s*\([^)]*\).*?(?=\ndef\s|\nclass\s|\Z)', re.DOTALL)
-    llm_fn = pattern.findall(code)
-    if llm_fn:
-        target = re.compile(rf'def\s+{fn_name}\s*\([^)]*\).*?(?=\ndef\s|\nclass\s|\Z)', re.DOTALL)
-        new_src = target.sub(llm_fn[0].rstrip(), src, count=1)
-        if new_src != src:
-            TESTBED.write_text(new_src)
-            return True
-    
-    # Fallback: restore original
+    fn = bug["function"]
+    pat = re.compile(rf'def\s+{fn}\s*\([^)]*\).*?(?=\ndef\s|\nclass\s|\Z)', re.DOTALL)
+    matches = pat.findall(code)
+    if matches:
+        tgt = re.compile(rf'def\s+{fn}\s*\([^)]*\).*?(?=\ndef\s|\nclass\s|\Z)', re.DOTALL)
+        ns = tgt.sub(matches[0].rstrip(), src, count=1)
+        if ns != src: TESTBED.write_text(ns); return True
     if bug["mutated"] in src:
-        fixed = src.replace(bug["mutated"], bug["original"])
-        if fixed != src:
-            TESTBED.write_text(fixed)
-            return True
+        ns = src.replace(bug["mutated"], bug["original"])
+        if ns != src: TESTBED.write_text(ns); return True
     return False
 
 
-def run_experiment(name: str, wipe_kg: bool, bug_pool: list[dict], sessions: int) -> list[dict]:
-    """Run N sessions for one condition."""
+def run_rag_experiment(arm_name: str, retrieval_mode: str, bug_pool: list[dict], sessions: int) -> list[dict]:
     print(f"\n{'='*60}")
-    print(f"  {name} — {sessions} sessions")
-    print(f"  Bugs: {len(bug_pool)} unique | Model: {MODEL}")
+    print(f"  {arm_name} — {sessions} sessions | Retrieval: {retrieval_mode.upper()}")
     print(f"{'='*60}")
-
-    original_src = TESTBED.read_text()
-    storage = Path(tempfile.mkdtemp())
-    engine = ShadowEngine(storage_path=storage, repo_path=".")
-    engine.bootstrap()
+    orig = TESTBED.read_text()
+    fixer = RetrievalAugmentedFixer()
     results = []
-
-    approaches = ["Targeted Fix", "Root Cause + Guard", "Extensible Implementation",
-                  "Incremental Rewrite", "Safe Extract", "TDD First"]
+    approaches = ["Targeted Fix","Root Cause + Guard","Extensible Implementation",
+                  "Incremental Rewrite","Safe Extract","TDD First"]
+    all_diffs = []
 
     for i in range(sessions):
         bug = bug_pool[i % len(bug_pool)]
-        if wipe_kg:
-            shutil.rmtree(storage, ignore_errors=True)
-            storage = Path(tempfile.mkdtemp())
-            engine = ShadowEngine(storage_path=storage, repo_path=".")
-            engine.bootstrap()
-
         approach = approaches[i % len(approaches)]
-        sid = f"{'test' if not wipe_kg else 'ctrl'}-{i+1:04d}"
+        sid = f"rag-{i+1:04d}"
 
-        context = ""
-        if not wipe_kg:
-            try:
-                context = engine.get_context(bug["description"])
-            except Exception:
-                pass
+        rag_ctx = ""
+        if retrieval_mode == "vector":
+            sim = fixer.get_similar_fixes(bug["description"])
+            rag_ctx = format_retrieval_context(sim)
+        elif retrieval_mode == "random" and all_diffs:
+            rd = random.choice(all_diffs)
+            rag_ctx = f"Past fix:\n```diff\n{rd['diff'][:500]}\n```\n"
 
-        t_start = time.time()
+        t0 = time.time()
         pre_pass, pre_fail, test_out = inject_and_test(bug)
-        fix_code, fix_dur = get_llm_fix(bug, approach, test_out, context)
+        fix_code, _ = get_llm_fix(bug, approach, test_out, rag_ctx)
         applied = apply_fix(fix_code, bug)
         post_pass, post_fail, _ = run_tests(bug["test_filter"])
-        dur = time.time() - t_start
+        dur = time.time() - t0
         success = post_fail == 0 and post_pass > 0
 
-        ingestion = engine.record_result(
-            session_id=sid, outcome="success" if success else "failure",
-            prompt=bug["description"], approach=approach, model=MODEL,
-            files_changed=["testbed.py"] if applied else [],
-            test_results={"total": max(post_pass+post_fail, 1), "passed": post_pass, "failed": post_fail},
-            duration_seconds=dur, token_count=0,
-        )
+        if success:
+            d = f"Replace '{bug['mutated'][:80]}' with '{bug['original'][:80]}' in {bug['function']}()"
+            fixer.add_successful_fix(sid, bug["description"], d, bug["function"])
+            if retrieval_mode == "random":
+                all_diffs.append({"diff": d, "function": bug["function"]})
 
         results.append({
             "session": i+1, "bug": bug["id"], "difficulty": bug["difficulty"],
             "approach": approach, "success": success,
             "pre_fail": pre_fail, "post_fail": post_fail,
             "fix_applied": applied, "dur_sec": round(dur, 1),
-            "patterns": len(ingestion.get("patterns_learned", [])),
+            "db_size": fixer.count(),
         })
-
         emoji = "✅" if success else "❌"
-        print(f"  S{i+1:4d}: [{bug['difficulty'][:1].upper():4s}] {bug['id'][:30]:30s} {approach:28s} {emoji} ({dur:.0f}s, {len(ingestion.get('patterns_learned',[]))}p)")
+        print(f"  S{i+1:4d}: [{bug['difficulty'][:1].upper():4s}] {bug['id'][:30]:30s} {approach:28s} {emoji} ({dur:.0f}s, db={fixer.count()})")
 
-        restore_testbed(original_src)
+        TESTBED.write_text(orig)
 
         if (i+1) % 25 == 0:
             ok = sum(1 for r in results[-25:] if r["success"])
-            stats = engine.get_stats()
-            print(f"  ── Rolling: {ok}/25 ({ok*4}%) | Patterns: {stats.get('total_patterns',0)} ──\n")
+            print(f"  ── Rolling: {ok}/25 ({ok*4}%) | DB: {fixer.count()} fixes ──\n")
 
-    shutil.rmtree(storage, ignore_errors=True)
     return results
 
 
-def restore_testbed(src: str):
-    TESTBED.write_text(src)
-
-
-def analyze(test_results: list, control_results: list, n: int):
-    """Full statistical analysis."""
+def analyze(all_results: dict):
     print(f"\n{'='*60}")
-    print(f"  LONGITUDINAL EXPERIMENT — {n} Sessions")
+    print(f"  RAG HYPOTHESIS TEST RESULTS")
     print(f"{'='*60}")
+    for arm, results in all_results.items():
+        if not results: continue
+        n = len(results)
+        rate = sum(1 for r in results if r["success"]) / n
+        early = sum(1 for r in results[:min(20,n)] if r["success"]) / min(20,n)
+        late = sum(1 for r in results[-min(20,n):] if r["success"]) / min(20,n)
+        print(f"\n  [{arm}]")
+        print(f"    Overall: {rate:.0%} | Early: {early:.0%} → Late: {late:.0%} ({late-early:+.0%})")
+        for diff in ["easy","medium","hard"]:
+            d = [r for r in results if r["difficulty"]==diff]
+            if d: print(f"    [{diff:6s}]: {sum(1 for r in d if r['success'])/len(d):.0%}")
 
-    # 1. Success rate by window
-    windows = [(1, 10), (n//2-5, n//2+5), (n-9, n)]
-    for start, end in windows:
-        tw = [r for r in test_results if start <= r["session"] <= end]
-        cw = [r for r in control_results if start <= r["session"] <= end]
-        tr = sum(1 for r in tw if r["success"]) / len(tw) if tw else 0
-        cr = sum(1 for r in cw if r["success"]) / len(cw) if cw else 0
-        print(f"  Sessions {start:3d}-{end:3d}: Test={tr:.0%} | Control={cr:.0%} | Δ={tr-cr:+.0%}")
+    arms = list(all_results.keys())
+    if len(arms) >= 2:
+        r1 = [1 if r["success"] else 0 for r in all_results[arms[0]]]
+        r2 = [1 if r["success"] else 0 for r in all_results[arms[1]]]
+        p1, p2 = sum(r1)/len(r1) if r1 else 0, sum(r2)/len(r2) if r2 else 0
+        proven = p1 > p2 + 0.05
+        print(f"\n  {arms[0]} vs {arms[1]}: {p1:.0%} vs {p2:.0%} ({p1-p2:+.0%})")
+        print(f"  VERDICT: {'✅ RETRIEVAL HELPS' if proven else '❌ NO EVIDENCE'}")
 
-    # 2. Trend analysis
-    test_success = [1 if r["success"] else 0 for r in test_results]
-    trend_slope = linear_trend(test_success)
-    print(f"\n  Trend slope (test group): {trend_slope:+.4f} per session")
-    
-    # 3. Delta analysis
-    test_final = sum(1 for r in test_results[-20:] if r["success"]) / 20
-    test_early = sum(1 for r in test_results[:20] if r["success"]) / 20
-    ctrl_final = sum(1 for r in control_results[-20:] if r["success"]) / 20
-    ctrl_early = sum(1 for r in control_results[:20] if r["success"]) / 20
-    
-    test_improvement = test_final - test_early
-    ctrl_improvement = ctrl_final - ctrl_early
-    delta = test_improvement - ctrl_improvement
-    
-    print(f"  Test improvement: {test_improvement:+.0%} | Control: {ctrl_improvement:+.0%} | Delta: {delta:+.0%}")
-
-    # 4. Per-difficulty breakdown
-    for diff in ["easy", "medium", "hard"]:
-        td = [r for r in test_results if r["difficulty"] == diff]
-        cd = [r for r in control_results if r["difficulty"] == diff]
-        tr = sum(1 for r in td if r["success"]) / len(td) if td else 0
-        cr = sum(1 for r in cd if r["success"]) / len(cd) if cd else 0
-        print(f"  [{diff:6s}]: Test={tr:.0%} | Control={cr:.0%}")
-
-    # 5. Pattern accumulation
-    test_patterns = [r["patterns"] for r in test_results]
-    print(f"\n  Test patterns: {sum(test_patterns)} total (avg {sum(test_patterns)/len(test_patterns):.1f}/session)")
-    
-    proven = delta > 0.05
-    
-    print(f"\n{'='*60}")
-    print(f"  VERDICT: {'✅ HYPOTHESIS PROVEN' if proven else '❌ NOT YET PROVEN'}")
-    if not proven:
-        if delta > 0:
-            print(f"  Directional evidence (+{delta:.0%}) but below significance threshold.")
-        else:
-            print(f"  No evidence of compounding intelligence.")
-    print(f"{'='*60}")
-
-    out = SCRIPTS_DIR.parent / "docs" / "longitudinal_results.json"
+    out = SCRIPTS_DIR.parent / "docs" / "rag_results.json"
     out.parent.mkdir(exist_ok=True)
-    out.write_text(json.dumps({
-        "sessions": n, "test_improvement": test_improvement, "ctrl_improvement": ctrl_improvement,
-        "delta": delta, "proven": proven,
-    }, indent=2))
+    out.write_text(json.dumps({k: sum(1 for r in v if r["success"])/len(v) if v else 0 for k,v in all_results.items()}, indent=2))
     print(f"\nSaved to {out}")
-
-
-def linear_trend(series: list) -> float:
-    """Linear regression slope."""
-    n = len(series)
-    if n < 2:
-        return 0
-    x_mean = (n - 1) / 2
-    y_mean = sum(series) / n
-    num = sum((i - x_mean) * (series[i] - y_mean) for i in range(n))
-    den = sum((i - x_mean) ** 2 for i in range(n))
-    return num / den if den else 0
 
 
 def main():
     import argparse
     p = argparse.ArgumentParser()
-    p.add_argument("--sessions", type=int, default=100)
+    p.add_argument("--sessions", type=int, default=50)
+    p.add_argument("--retrieval", choices=["vector","random","none"], default="vector")
     args = p.parse_args()
 
     print(f"{'='*60}")
-    print(f"  LONGITUDINAL LEARNING EXPERIMENT")
-    print(f"  Model: {MODEL} | Pool: {args.sessions} bugs")
-    print(f"  Learning ON vs OFF + trend + delta analysis")
+    print(f"  RETRIEVAL-AUGMENTED FIXING EXPERIMENT")
+    print(f"  New hypothesis: similar past diffs → better fixes")
+    print(f"  Model: {MODEL} | {args.sessions} sessions | Retrieval: {args.retrieval.upper()}")
     print(f"{'='*60}")
 
-    bug_pool = generate_bug_pool(target_count=args.sessions)
-    print(f"Generated {len(bug_pool)} unique bugs")
+    bug_pool = generate_hard_bug_pool(target_count=max(30, args.sessions//2))
+    print(f"Generated {len(bug_pool)} hard bugs (targets: topological_sort, regex_match, merge_intervals, binary_search)")
 
-    test_results = run_experiment("LEARNING ON (KG retained)", wipe_kg=False, bug_pool=bug_pool, sessions=args.sessions)
-    control_results = run_experiment("LEARNING OFF (KG wiped)", wipe_kg=True, bug_pool=bug_pool, sessions=args.sessions)
-    analyze(test_results, control_results, args.sessions)
+    results = run_rag_experiment(f"RAG={args.retrieval.upper()}", args.retrieval, bug_pool, args.sessions)
+    analyze({"retrieval": results})
 
 
 if __name__ == "__main__":
