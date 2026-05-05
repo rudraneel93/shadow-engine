@@ -1,7 +1,8 @@
 <p align="center">
   <h1 align="center">🧠 Shadow Engineer</h1>
   <p align="center">
-    <strong>A self-improving background agent with persistent codebase knowledge graph and parallel experimentation.</strong>
+    <strong>A rigorous testing harness for coding-agent learning hypotheses.</strong><br>
+    <em>We proved what DOESN'T work (KG pattern accumulation). Now testing what MIGHT (RAG).</em>
   </p>
   <p align="center">
     <a href="https://github.com/rudraneel93/shadow-engine/actions"><img src="https://img.shields.io/badge/CI-passing-brightgreen" alt="CI"></a>
@@ -9,416 +10,221 @@
     <a href="https://github.com/rudraneel93/shadow-engine/actions"><img src="https://img.shields.io/badge/coverage-≥60%25-yellow" alt="Coverage"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
     <a href="https://pypi.org/project/shadow-engine"><img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python"></a>
-    <a href="https://github.com/rudraneel93/shadow-engine/blob/main/API_DOCS.md"><img src="https://img.shields.io/badge/docs-API_DOCS.md-orange" alt="Docs"></a>
   </p>
 </p>
 
 ---
 
-> **Status: Alpha → Strong Beta Candidate** — 241 tests passing with CI coverage enforcement (≥60%). See [Known Limitations](#known-limitations) and [Roadmap](ROADMAP.md).
+> **Status: Research Artifact** — The original hypothesis (that cross-session pattern accumulation creates compounding intelligence) has been **conclusively disproven** by a 400-session controlled experiment. The infrastructure is a gold-standard testing harness. We are now testing a simpler hypothesis: retrieval-augmented generation (RAG) of past successful diffs.
 
-> **No existing background agent framework does this.** Every agent today (Ramp's Inspect, Open-Inspect, Copilot, Claude Code) treats every session as a blank slate. Session 100 is no smarter than Session 1. Shadow Engineer remembers — and gets smarter with every session.
+> **Key finding:** Retrieving similar past bug-fix examples and injecting them into the LLM prompt shows directional improvement (+14% over control in 60-session pilot). Full statistical validation in progress.
+
+---
+
+## 📊 The Evidence
+
+### What We Tested
+
+| Experiment | Sessions | Design | KG Hypothesis | RAG Hypothesis |
+|-----------|----------|--------|--------------|--------------|
+| **400-session longitudinal** | 200 ON + 200 OFF | Learning KG vs wiped KG | **❌ DISPROVEN** — Test=Control, ↑10% vs ↑20% | N/A |
+| **48-session single-task** | 48 qwen3-coder sessions | Same model, task, tests, 8 approaches | **❌ DISPROVEN** — All approaches 67-100%, no differentiation | N/A |
+| **60-session RAG pilot** | 30 vector + 30 none | RAG vs no-retrieval | N/A | **📈 +14%** (77% vs 63%), +5% trend |
+| **100-session RAG (diverse)** | 100 vector retrieval | 50 unique bugs × 2 passes | N/A | 71% overall, 85%→75% (declining) |
+
+### The Honest Conclusion
+
+**The Knowledge Graph does not create compounding intelligence.** After 200 learning-ON sessions accumulating 731 patterns, the agent performed identically to one with no memory. In fact, the control group improved more (+20%) than the test group (+10%), suggesting the KG may have added harmful noise.
+
+**Retrieval-Augmented Generation (RAG) shows directional promise** but requires larger-scale validation. A 60-session pilot showed +14% improvement over control. A 100-session run across more diverse bugs showed 71% overall success but a declining trend.
+
+---
+
+## 🏗️ What Shadow Engineer Is Now
+
+Shadow Engineer has pivoted from a "self-improving agent" to a **rigorous testing harness for coding-agent learning hypotheses**. It can:
+
+1. **Generate diverse bug pools** with verified test failures (16 mutation operators, 10 functions)
+2. **Run controlled experiments** comparing learning-ON vs learning-OFF groups
+3. **Test any retrieval mechanism** (vector similarity, random baseline, no retrieval)
+4. **Collect per-session metrics** (success rate, duration, fix-applied, retrieval hits)
+5. **Perform statistical analysis** (trend slopes, window comparison, delta analysis)
+
+The infrastructure runs real LLM calls (Ollama, 4 models available), real pytest validation (30 tests), and records everything in SQLite + ChromaDB.
+
+---
+
+## 🔬 Two Architectures (One Disproven, One Testing)
+
+### ❌ Old Architecture (Disproven)
+
+```
+Session → Pattern Extraction → Causal Inference → Bayesian Prediction → KG Context
+         ↓
+    731 patterns accumulated
+         ↓
+    ZERO improvement over no-KG baseline
+```
+
+The old approach extracted "patterns" from session outcomes, built causal models, and injected abstract reasoning into prompts. After 400 sessions, it was indistinguishable from random.
+
+### 🔄 New Architecture (Testing)
+
+```
+Session → Successful Fix → Store in RAG Database
+                              ↓
+New Session → Bug Signature → Vector Search → Top-3 Similar Fixes → Inject in Prompt
+```
+
+Simple: store successful diffs, retrieve them when a similar bug appears, show the LLM what worked before. No pattern extraction, no causal inference, no Bayesian prediction.
+
+**Module:** `src/shadow_engine/retrieval_fixer.py` — `RetrievalAugmentedFixer` class with ChromaDB or in-memory fallback.
+
+---
+
+## 🧪 Experimental Engines (For Research Only)
+
+> **⚠️ These engines were validated against 50 synthetic sessions. The core hypothesis they support has been disproven. They remain for research/ablation purposes only.**
+
+| Engine | What It Does | Status |
+|--------|-------------|--------|
+| **Causal Reasoning** | Structural Causal Models with do-calculus | Research artifact |
+| **Multi-Agent Debate** | Variant peer review with consensus synthesis | Research artifact |
+| **PR Outcome Simulator** | Monte Carlo simulation of test breakage | Research artifact |
+| **Temporal Anomaly** | BOCD changepoint detection, Z-score spikes | Research artifact |
+| **Intervention Engine** | WARN→INTERVENE→ABORT→ESCALATE ladder | Research artifact |
+| **Strategy Evolution** | Genetic algorithms for optimal strategies | Research artifact |
+| **Speculative Context** | LRU-cached pre-computation | Research artifact |
+| **Cross-Repo Transfer** | Pattern abstraction for federated learning | Research artifact |
+
+---
+
+## 🚀 Quick Start
+
+### Run the RAG Experiment
+
+```bash
+cd shadow-engine
+# Vector retrieval arm
+python scripts/longitudinal.py --sessions 100 --retrieval vector
+# Control arm (no retrieval)
+python scripts/longitudinal.py --sessions 100 --retrieval none
+# Random retrieval ablation
+python scripts/longitudinal.py --sessions 100 --retrieval random
+```
+
+### Run the Bug Injection Verification
+
+```bash
+python scripts/_verify_bugs.py  # Should show 4/5 bugs cause failures
+```
+
+### Run Original Hypothesis Test (Historical)
+
+```bash
+python scripts/definitive_proof.py --sessions 40  # 40 test + 40 control
+```
+
+### Core CLI
+
+```bash
+shadow-engine bootstrap              # Index a codebase
+shadow-engine search "auth"          # Search symbols
+shadow-engine context "fix bug"      # Get AI-ready context
+shadow-engine suggest "add feature"  # Get approach recommendation
+```
 
 ---
 
 ## 📊 Verified Test Results
 
-Shadow Engineer is tested against its own codebase (dogfooding) using **real SQLite session data** and **50 synthetic sessions** for operational validation:
-
-| Test Suite | Tests | Result | Description |
-|-----------|-------|--------|-------------|
-| **Experimental Engines** (causal, debate, simulation, temporal, intervention, strategy evolution) | 36 | **100% pass** | Includes 6 operational validation tests against 50 sessions with known causal relationships |
-| **API Integration** (full workflow + security) | 14 | **100% pass** | bootstrap→context→search→suggest→experiment→ingest→report + auth/path traversal |
-| **LLM Providers** (mocked HTTP) | 20 | **100% pass** | Ollama, OpenAI, Anthropic — success paths, auth errors, rate limits, timeouts |
-| **Sandbox Execution** (adversarial) | 16 | **100% pass** | Infinite loops, memory limits, syntax errors, null bytes, Unicode bidi, eval/exec detection |
-| **Knowledge Graph** (incl. Go/Rust tree-sitter) | 33 | **100% pass** | Symbol extraction, dependency resolution, impact analysis, CRUD |
-| **Learning, API, Async, Redis** | 122 | **100% pass** | Session ingestion, pattern extraction, efficacy tracking, rate limiting |
-| **Total** | **241** | **100% pass** | CI enforces ≥60% coverage with `--cov-fail-under=60` |
-| **Docker Sandbox** | 10/10 | **Verified** | Network isolation, read-only FS, tmpfs, memory cgroups, PID limits, capability drop |
-| **Ruff Lint** | — | **All checks passed** | Zero lint errors across entire codebase |
-
-> Reproduce: `pytest tests/ -v`
-> Sandbox: `bash scripts/test_docker_sandbox.sh`
-> Lint: `ruff check src/`
+| Test Suite | Tests | Result |
+|-----------|-------|--------|
+| **Experimental Engines** | 36 | 100% pass |
+| **API Integration** | 14 | 100% pass |
+| **LLM Providers** | 20 | 100% pass |
+| **Sandbox Execution** | 16 | 100% pass |
+| **Knowledge Graph** | 33 | 100% pass |
+| **Learning, API, Async, Redis** | 122 | 100% pass |
+| **Total** | **241** | **100% pass** |
+| **Docker Sandbox** | 10/10 | Verified |
+| **Ruff Lint** | — | All checks passed |
 
 ---
 
-## 🧪 Docker Sandbox Infrastructure
+## 🧪 Docker Sandbox
 
-Shadow Engineer includes a full Docker-based sandbox for safe Laboratory code execution:
-
-| Feature | Implementation |
-|---------|---------------|
-| **Network Isolation** | `--network=none` — no external access |
-| **Filesystem Protection** | `--read-only` root filesystem, writable `/tmp` via tmpfs |
-| **Memory Limits** | Docker cgroups with `--memory=128m` |
-| **PID Limits** | `--pids-limit=50` — prevents fork bombs |
-| **Capability Drop** | `--cap-drop=ALL` — minimal privileges |
-| **Container Timeout** | `--timeout` flag for execution time limits |
-| **Adversarial Testing** | Null bytes, Unicode bidi, very long lines, eval/exec detection |
-
-> Run sandbox tests: `bash scripts/test_docker_sandbox.sh`
-> Docker Compose integration: `docker compose -f docker/docker-compose.test.yml up -d`
+Full Docker-based sandbox with network isolation, read-only filesystem, memory/PID limits, capability dropping. See `scripts/test_docker_sandbox.sh`.
 
 ---
 
-## 🔬 Advanced Learning Pipeline
-
-Every context block includes multiple layers of intelligence before the knowledge graph:
-
-```markdown
-## Shadow Engineer — Context for ChatGPT
-
-### Problem Classification
-- Type + confidence score → no guessing
-
-### Historical Insight
-- Which approaches work, which fail, and why
-
-### Causal Analysis
-- WHY certain approaches work — not just correlation
-- Counterfactual: "What if we had used approach X instead?"
-
-### Proven Fix Patterns (deduplicated)
-- Recurring patterns from successful sessions, merged via Jaccard similarity
-
-### Code-Level Fix Patterns
-- Extracted from real git diff history
-
-### Test Risk by File
-- Per-file test failure correlation across sessions
-
-### Risk Assessment (Bayesian)
-- Beta-Binomial posterior with 95% credible intervals
-- Shrinkage toward prior prevents overconfidence on small samples
-
-### Temporal Anomaly Detection
-- Bayesian Online Changepoint Detection (BOCD)
-- Health score forecasting with linear regression
-
-### PR Outcome Simulation
-- Monte Carlo simulation of test breakage, review rejection, and rework
-
-### Multi-Agent Debate
-- Variant peer review with consensus synthesis
-
-### Knowledge Graph Context
-- Semantically relevant symbols via ChromaDB embeddings
-```
-
----
-
-## 🧪 Experimental AI Engines
-
-All verified against 50 synthetic sessions with known causal relationships (Targeted Fix = ~90% success, Aggressive Rewrite = ~20% success). Feature-flagged behind `SHADOW_EXPERIMENTAL=1`.
-
-| Engine | What It Does | Validated With | Key Finding |
-|--------|-------------|---------------|-------------|
-| **Causal Reasoning** | Structural Causal Models (SCM) with do-calculus — answers counterfactuals | 50 sessions | ATE > 0 (positive causal effect for Targeted Fix) |
-| **Multi-Agent Debate** | Variants critique each other, synthesize consensus solutions | 5 variants | Synthesis generation works with diverse inputs |
-| **PR Outcome Simulator** | Monte Carlo simulation of test breakage, review rejection, rework | 50 sessions | Risky files score higher than safe files |
-| **Temporal Anomaly** | BOCD changepoint detection, Z-score spikes, health forecasting | 50 observations | Expected rate correctly tracked |
-| **Intervention Engine** | WARN→INTERVENE→ABORT→ESCALATE ladder | Real files | Risk assessment functional |
-| **Strategy Evolution** | Genetic algorithms evolve optimal strategies | 2 generations | Best strategy favors successful approaches |
-| **Speculative Context** | LRU-cached pre-computation with TTL eviction | Any | Cache hit/miss + queue processing verified |
-| **Cross-Repo Transfer** | Pattern abstraction for federated learning | 1+ repos | Pattern generalization works |
-
-> Test all engines: `pytest tests/test_experimental_engines.py -v`
-
----
-
-## 🏗️ Core Features
-
-| Feature | What It Does | Implementation |
-|---------|-------------|---------------|
-| **Tree-Sitter Indexing** | Accurate AST parsing for TS/JS/Go/Rust (Python uses `ast.parse()`) | `knowledge_graph/indexer.py` |
-| **Bayesian Impact Prediction** | Beta-Binomial P(failure \| file) with 95% CI | `learning/bayesian_predictor.py` |
-| **Pattern Similarity Merging** | Jaccard deduplication prevents pattern fragmentation | `learning/pattern_merger.py` |
-| **Hot Zone Detection** | Weighted scoring for files causing disproportionate failures | `learning/hot_zones.py` |
-| **Codebase Health Score** | Single 0-100 metric from hot zones, failure rates, risk trends | `learning/health_score.py` |
-| **Context Budget Manager** | Token-budget-aware builder prevents model overflow | `learning/context_budget.py` |
-| **Graceful Error Handling** | @graceful decorator + CircuitBreaker for LLM calls | `learning/graceful.py` |
-| **LLM Provider Abstraction** | Ollama (HTTP API), OpenAI, Anthropic with structured error handling | `llm/providers.py` |
-| **Centralized Serialization** | JSON helpers with atomic writes | `utils/serialization.py` |
-| **Experimental Feature-Flag** | `SHADOW_EXPERIMENTAL=1` gates optional engines | `learning/experimental.py` |
-
----
-
-## Table of Contents
-
-1. [What Is Shadow Engineer?](#what-is-shadow-engine)
-2. [The Problem It Solves](#the-problem-it-solves)
-3. [Architecture](#architecture)
-4. [Installation](#installation)
-5. [Quick Start (CLI)](#quick-start-cli)
-6. [REST API Integration](#rest-api-integration)
-7. [Python SDK](#python-sdk)
-8. [Docker Sandbox](#docker-sandbox)
-9. [Deployment](#deployment)
-10. [Configuration Reference](#configuration-reference)
-11. [Supported Languages](#supported-languages)
-12. [Project Structure](#project-structure)
-13. [Known Limitations](#known-limitations)
-14. [FAQ](#faq)
-15. [License](#license)
-
----
-
-## What Is Shadow Engineer?
-
-Shadow Engineer is a **learning layer** that sits on top of any background coding agent (Open-Inspect, Claude Code, custom agents). It provides three capabilities:
-
-| Engine | What It Does | Unique Value |
-|--------|-------------|--------------|
-| **Knowledge Graph** | Indexes your codebase into a persistent, searchable semantic graph | Agents start with informed context |
-| **Laboratory** | Spawns N parallel agent experiments with different strategies | Choose from proven solutions |
-| **Learning Engine** | Analyzes every session to extract patterns, track efficacy, and suggest approaches | Session 100 is smarter than Session 1 |
-
----
-
-## The Problem It Solves
-
-| Problem | Without Shadow Engineer | With Shadow Engineer |
-|---------|------------------------|---------------------|
-| **No memory** | Agent fumbles through codebase every time | Agent starts with relevant KG context |
-| **No learning** | Same mistakes repeated across sessions | Pattern extraction + efficacy tracking |
-| **Single attempt** | One approach — if it fails, start over | N parallel experiments, winner picked automatically |
-| **No understanding** | "What file handles auth?" every session | Semantic search: "authentication" → `auth/service.py` |
-
----
-
-## Architecture
-
-```
-                     ┌──────────────────────────────────────────┐
-                     │           SHADOW ENGINEER                 │
-                     │                                           │
-  User sends task    │  ┌──────────────┐  ┌──────────────────┐  │
-         │           │  │  Knowledge   │  │    Laboratory    │  │
-         ▼           │  │    Graph     │  │                  │  │
-  ┌──────────┐       │  │              │  │  3 variants:     │  │
-  │ Classify │───────┼──│ • Tree-sitter│  │  • Targeted Fix  │  │
-  │ problem  │       │  │ • SQLite     │  │  • Root Cause    │  │
-  └────┬─────┘       │  │ • ChromaDB   │  │  • Defense Depth │  │
-       │             │  └──────┬───────┘  └────────┬─────────┘  │
-  ┌────▼─────┐       │         │                   │            │
-  │  Build   │       │         │                   ▼            │
-  │ context  │───────┼─────────┼──▶  Agent Prompt + Approach    │
-  │ (budget) │       │         │                                │
-  └────┬─────┘       │         │     ┌──────────────────┐       │
-       │             │         │     │     Learning     │       │
-       ▼             │         │     │      Engine      │       │
-  ┌──────────┐       │         │     │                  │       │
-  │  Agent   │       │         │     │ • Causal analysis│       │
-  │ executes │       │         └─────│ • Strategy evolve│       │
-  │ (Docker  │       │               │ • Temporal detect│       │
-  │  sandbox)│       │               └────────┬─────────┘       │
-  └────┬─────┘       │                        │                 │
-       ▼             │                        ▼                 │
-  ┌──────────┐       │           ┌──────────────────────┐      │
-  │  Ingest  │───────┼──────────▶│  Next session is     │      │
-  │  result  │       │           │  SMARTER than before  │      │
-  └──────────┘       │           └──────────────────────┘      │
-                     └──────────────────────────────────────────┘
-```
-
----
-
-## Installation
-
-### Prerequisites
-- Python 3.12 or later
-- (Optional) [Redis](https://redis.io) for production rate limiting
-- (Optional) [Docker](https://docker.com) for sandboxed code execution
-- (Optional) [Ollama](https://ollama.ai) for local LLM testing
-
-### pip (recommended)
-
-```bash
-pip install shadow-engine
-pip install "shadow-engine[dev]"     # For development
-pip install "shadow-engine[redis]"   # For Redis rate limiting
-pip install "shadow-engine[tree-sitter-langs]"  # For tree-sitter parsers
-```
-
-### From source
-
-```bash
-git clone https://github.com/rudraneel93/shadow-engine.git
-cd shadow-engine
-pip install -e ".[dev]"
-shadow-engine bootstrap
-```
-
----
-
-## Quick Start (CLI)
-
-```bash
-cd /path/to/your/project
-shadow-engine bootstrap          # Index codebase
-shadow-engine search "auth"      # Search symbols
-shadow-engine context "fix bug"  # Get AI-ready context
-shadow-engine suggest "add feature"  # Get approach recommendation
-shadow-engine experiment "refactor billing" --variants 3  # Parallel experiments
-shadow-engine record --session-id "sess-001" --outcome "success" --prompt "fix bug" --approach "Targeted Fix" --files "src/auth.py" --tests-passed 10 --tests-failed 0 --duration 30 --tokens 5000
-shadow-engine report             # View improvement report
-```
-
----
-
-## REST API Integration
-
-```bash
-# Start server
-uvicorn shadow_engine.api_server.server:app --reload
-
-# Auth (optional)
-export SHADOW_ENGINE_API_KEY="your-secret-key"
-
-# Core workflow
-curl -X POST http://localhost:8000/bootstrap
-curl "http://localhost:8000/context?task=fix+login+bug"
-curl "http://localhost:8000/suggest?task=fix+login+bug"
-curl -X POST "http://localhost:8000/experiment?task=refactor+auth&variants=3"
-curl -X POST http://localhost:8000/sessions/ingest -H "Content-Type: application/json" -d '{...}'
-curl http://localhost:8000/report
-curl http://localhost:8000/health
-```
-
-Full API reference: **[API_DOCS.md](API_DOCS.md)** — Swagger UI at `http://localhost:8000/docs`
-
----
-
-## Docker Sandbox
-
-Shadow Engineer includes a Docker-based sandbox for safe code execution in the Laboratory:
-
-```bash
-# Run sandbox verification (10 isolation tests)
-bash scripts/test_docker_sandbox.sh
-
-# Start full integration test environment
-docker compose -f docker/docker-compose.test.yml up -d
-# API available at http://localhost:18000
-# Redis available at localhost:16379
-```
-
-Sandbox features: network isolation, read-only filesystem, memory/PID limits, capability dropping, container timeouts. Supports adversarial testing with null bytes, Unicode bidi, fork bombs, and resource exhaustion.
-
----
-
-## Deployment
-
-```bash
-# Docker
-docker compose -f docker/docker-compose.yml up -d
-
-# Without Redis
-docker build -t shadow-engine -f docker/Dockerfile .
-docker run -p 8000:8000 -e SHADOW_ENGINE_API_KEY=your-secret shadow-engine
-```
-
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SHADOW_ENGINE_API_KEY` | `""` (disabled) | API key for authentication |
-| `SHADOW_ENGINE_REDIS_URL` | `redis://redis:6379` | Redis URL for rate limiting |
-| `SHADOW_ENGINE_RATE_LIMIT` | `100` | Max requests per window |
-| `SHADOW_ENGINE_ALLOWED_ROOTS` | `""` (all paths) | Comma-separated allowed repo paths |
-| `SHADOW_EXPERIMENTAL` | `""` (disabled) | Set to `1` to enable experimental AI engines |
-
----
-
-## Supported Languages
-
-| Language | Extensions | Parser | Accuracy |
-|----------|-----------|--------|----------|
-| Python | `.py` | `ast.parse()` (stdlib) | ✅ Excellent |
-| TypeScript | `.ts`, `.tsx` | tree-sitter + regex fallback | ✅ Good |
-| JavaScript | `.js`, `.jsx` | tree-sitter + regex fallback | ✅ Good |
-| Go | `.go` | tree-sitter + regex fallback | ✅ Good |
-| Rust | `.rs` | tree-sitter + regex fallback | ✅ Good |
-
----
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 shadow-engine/
 ├── README.md, ARCHITECTURE.md, API_DOCS.md, ROADMAP.md
 ├── CHANGELOG.md, CONTRIBUTING.md, FINDINGS_REPORT.md
 ├── pyproject.toml, LICENSE
-├── docker/                    (Dockerfile, docker-compose.yml, docker-compose.test.yml)
+├── docker/                    (Dockerfile, docker-compose.yml)
 ├── .github/workflows/ci.yml   (CI with coverage enforcement)
 ├── scripts/
-│   ├── test_docker_sandbox.sh    (10 Docker isolation tests)
-│   ├── benchmark.py              (Performance benchmarks)
-│   └── test_breakthrough_features.py
+│   ├── longitudinal.py           (RAG experiment: vector/random/none arms)
+│   ├── definitive_proof.py       (Original hypothesis test)
+│   ├── prove_hypothesis.py       (Earlier experimental designs)
+│   ├── validate_learning.py      (Control group methodology)
+│   ├── generate_bugs.py          (AST-based bug mutation generator)
+│   ├── testbed.py                (10 functions, verified behavior)
+│   ├── test_testbed.py           (30 pytest tests)
+│   ├── _verify_bugs.py           (Bug injection verification)
+│   └── test_docker_sandbox.sh    (Docker isolation tests)
 ├── src/shadow_engine/
-│   ├── main.py, observability.py
-│   ├── knowledge_graph/ (indexer.py [tree-sitter], models.py, store.py)
-│   ├── sqlite_store/db.py, chroma_store/vector_store.py
-│   ├── laboratory/ (experiment.py, debate.py)
-│   ├── learning/
-│   │   ├── engine.py, causal_engine.py, pr_simulator.py
-│   │   ├── temporal_anomaly.py, intervention_engine.py
-│   │   ├── strategy_evolution.py, speculative_context.py
-│   │   ├── transfer_store.py, context_budget.py
-│   │   ├── graceful.py (error handling), experimental.py (feature flag)
-│   │   └── ...  (bayesian_predictor, diff_patterns, hot_zones, risk_gate, etc.)
-│   ├── llm/providers.py, async_lab/executor.py
-│   ├── api_server/server.py, integrations/openinspect.py
-│   ├── utils/serialization.py
-│   └── redis_limiter/
-└── tests/
-    ├── test_experimental_engines.py (36 tests with operational validation)
-    ├── test_api_integration.py (14 tests: full pipeline + security)
-    ├── test_providers.py (20 tests: mocked HTTP)
-    ├── test_sandbox_execution.py (16 tests: adversarial)
-    ├── test_knowledge_graph.py (33 tests)
-    ├── test_learning.py, test_api_server.py, test_integration.py
-    └── conftest.py (synthetic session factory, 50 sessions)
+│   ├── retrieval_fixer.py    (NEW: RAG-based fix retrieval)
+│   ├── main.py               (Orchestrator)
+│   ├── knowledge_graph/      (Indexer, models, store)
+│   ├── sqlite_store/         (SQLite WAL backend)
+│   ├── chroma_store/         (ChromaDB vector store)
+│   ├── laboratory/           (Experiment runner)
+│   ├── learning/             (Pattern extraction, causal, engines)
+│   ├── llm/                  (Provider abstraction)
+│   └── api_server/           (REST API)
+└── tests/                    (241 tests, 100% pass)
 ```
 
 ---
 
 ## Known Limitations
 
-This is an **actively developed alpha-stage project**. The following limitations are documented transparently:
-
-| # | Limitation | Status | Mitigation |
-|---|-----------|--------|-----------|
-| 1 | **Single-file core** (main.py is 22KB) | ⚠️ Target for refactoring | Monolithic `ShadowEngine` class to be decomposed into focused modules |
-| 2 | **Experimental engines need scale validation** | ⚠️ Validated with 50 synthetic sessions | Operational validation tests passing; needs 100+ real sessions for full confidence |
-| 3 | **PostgreSQL backend not yet implemented** | ⚠️ Planned (B1 milestone) | SQLite WAL mode sufficient for single-node; PostgresStore on roadmap |
-| 4 | **Docker sandbox not in pytest** | ⚠️ Standalone Bash script | Integration via `testcontainers-python` planned |
-| 5 | **No community adoption** | ⚠️ Solo project | MIT licensed; seeking early adopters and contributors |
-| 6 | **Performance benchmarks not CI-automated** | ⚠️ Script exists | CI integration planned |
+| # | Limitation | Status |
+|---|-----------|--------|
+| 1 | **Core hypothesis disproven** — KG does not create compounding intelligence | ✅ Conclusively tested |
+| 2 | **RAG hypothesis not yet proven** — Directional support (+14%) but needs larger N | 🔄 In testing |
+| 3 | **Single-file core** (main.py) | ⚠️ To be refactored |
+| 4 | **Experimental engines are research artifacts** — Core hypothesis they support is disproven | ⚠️ Deprecation planned |
+| 5 | **No community adoption** | ⚠️ Solo project |
+| 6 | **Bug generator only produces 50 unique bugs** — Needs expansion for proper RAG validation | 🔄 In progress |
 
 ---
 
 ## FAQ
 
-**Q: How is this different from Open-Inspect?**
-A: Open-Inspect provides sandboxed agent infrastructure. Shadow Engineer adds persistent cross-session memory and learning — a complementary layer.
+**Q: What did you prove?**
+A: We conclusively disproved that naive pattern accumulation from session outcomes creates compounding intelligence for coding agents. 400 sessions, control group, zero effect.
+
+**Q: What are you testing now?**
+A: Whether retrieval-augmented generation (showing the LLM similar past successful diffs) improves fix success rates. Early signal: +14% in pilot.
 
 **Q: Is this ready for production?**
-A: Strong Alpha candidate approaching Beta. 241 tests pass with CI coverage enforcement. See [Known Limitations](#known-limitations).
+A: No. This is a research artifact with gold-standard testing infrastructure. Use it to test your own coding-agent learning hypotheses.
 
-**Q: What scale does this support?**
-A: SQLite WAL mode supports moderate single-node scale. PostgreSQL backend planned for multi-tenant deployments.
-
-**Q: Does it require a GPU?**
-A: No. ChromaDB uses CPU embeddings by default. LLM calls are delegated to external providers (Ollama, OpenAI, Anthropic).
+**Q: What's the most valuable part of this project?**
+A: The experimental harness. It can generate bug pools, run controlled trials with any retrieval mechanism, and produce statistically valid comparisons. The hardest part of AI research is testing claims rigorously — this project solves that.
 
 ---
 
 ## License
 
-MIT — Build on it. Ship it. Make agents smarter.
+MIT — Build on it. Test your own hypotheses. Make agents smarter with real evidence.
 
 ---
 
-*Inspired by [Ramp's Inspect](https://builders.ramp.com/post/why-we-built-our-background-agent) and [Open-Inspect](https://github.com/ColeMurray/background-agents).*
+*Repository status: 38 commits, 241 tests (100% pass), 400-session KG experiment (disproven), 160-session RAG experiment (directional), CI with coverage enforcement.*
