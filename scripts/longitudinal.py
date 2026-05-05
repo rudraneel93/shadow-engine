@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Longitudinal experiment with Retrieval-Augmented Fixing (RAG).
 
-Tests the NEW hypothesis:
-  "Providing the LLM with similar past successful bug-fix pairs
-   improves its success rate on new bugs."
+Tests: "Providing the LLM with similar past successful bug-fix pairs
+        improves its success rate on new bugs."
 
-Arms: --retrieval vector (similarity) / random (baseline) / none (control)
+Arms: --retrieval vector / random / none
 
-Run: python scripts/longitudinal.py --sessions 50 --retrieval vector
+Run: python scripts/longitudinal.py --sessions 100 --retrieval vector
 """
 
 import json, os, random, re, shutil, subprocess, sys, tempfile, time
@@ -23,65 +22,92 @@ TESTBED = SCRIPTS_DIR / "testbed.py"
 TESTS = SCRIPTS_DIR / "test_testbed.py"
 
 
-def generate_hard_bug_pool(target_count: int = 50) -> list[dict]:
-    """Generate bugs targeting hard functions (low baseline success)."""
-    src_lines = TESTBED.read_text().split("\n")
-    hard_funcs = ["topological_sort", "regex_match", "merge_intervals", "binary_search"]
+def generate_bug_pool(target_count: int = 60) -> list[dict]:
+    """Generate diverse bugs across ALL 10 testbed functions.
+
+    Uses multiple mutation strategies that work on generic Python code
+    (not string-literal matching which only finds 5 bugs).
+    """
+    src = TESTBED.read_text()
+    lines = src.split("\n")
+
+    # Find all functions
     funcs = []
-    for i, line in enumerate(src_lines):
+    for i, line in enumerate(lines):
         if line.startswith("def "):
             name = line.split("(")[0].replace("def ", "").strip()
-            if name in hard_funcs:
-                funcs.append({"name": name, "start": i})
+            funcs.append({"name": name, "start": i})
 
-    hard_ops = [
-        ("max", "min", "fn_max_min", "hard"),
-        ("min", "max", "fn_min_max", "hard"),
-        ("pop(0)", "pop(-1)", "queue_invert", "hard"),
-        ("return result", "return result[:1]", "truncate_result", "hard"),
-        ("left <= right", "left < right", "binary_break", "hard"),
-        ("if b == 0:", "if False:", "zero_div_break", "hard"),
-        (".get(", "[", "dict_break", "hard"),
-        ("sorted(word.lower())", "word.lower()", "anagram_break", "hard"),
+    # Find function end for each
+    for f in funcs:
+        end = min(f["start"] + 30, len(lines))
+        for j in range(f["start"] + 1, min(f["start"] + 30, len(lines))):
+            if lines[j].startswith("def ") or lines[j].startswith("class "):
+                end = j; break
+        f["end"] = end
+        f["body_lines"] = lines[f["start"]:f["end"]]
+
+    # Mutation strategies (work on generic Python):
+    ops = [
+        # (find_pattern, replacement, name, difficulty)
+        ("+", "-", "plus_to_minus", "easy"),
+        ("-", "+", "minus_to_plus", "easy"),
+        ("==", "!=", "eq_to_neq", "easy"),
+        ("<", ">", "lt_to_gt", "medium"),
+        (">", "<", "gt_to_lt", "medium"),
+        ("max(", "min(", "max_to_min", "hard"),
+        ("min(", "max(", "min_to_max", "hard"),
+        ("return", "return not ", "return_flip", "medium"),
+        ("if ", "if not ", "if_flip", "medium"),
+        ("[0]", "[1]", "index_shift", "hard"),
+        ("pop(0)", "pop()", "pop_first_to_last", "hard"),
+        ("left <= right", "left < right", "off_by_one", "hard"),
+        ("result[-1]", "result[0]", "last_to_first", "hard"),
+        ("sorted(", "list(", "sorted_removed", "hard"),
+        ('.get(', '[', "get_to_bracket", "hard"),
+        ("isinstance(", "type(", "isinstance_to_type", "hard"),
     ]
 
     bugs = []
-    for func in funcs:
-        fn_end = func["start"] + 1
-        for j in range(func["start"]+1, min(func["start"]+50, len(src_lines))):
-            if src_lines[j].startswith("def "):
-                fn_end = j; break
-        else:
-            fn_end = min(func["start"]+50, len(src_lines))
+    used = set()  # (func_name, line_offset) to avoid duplicates
 
-        body_lines = src_lines[func["start"]:fn_end]
-        for old_op, new_op, mut_name, difficulty in hard_ops:
-            if len(bugs) >= target_count: break
-            for li, line in enumerate(body_lines):
-                if old_op in line and len(line) > 5:
-                    mutated = line.replace(old_op, new_op, 1)
-                    if mutated != line and len(mutated) > 5:
+    for func in funcs:
+        fn = func["name"]
+        for li, line in enumerate(func["body_lines"]):
+            if len(bugs) >= target_count:
+                break
+            for pattern, replacement, mname, difficulty in ops:
+                if len(bugs) >= target_count:
+                    break
+                if pattern in line and len(line) > 5:
+                    key = (fn, li)
+                    if key in used:
+                        continue
+                    mutated = line.replace(pattern, replacement, 1)
+                    if mutated != line and len(mutated) > 3:
+                        used.add(key)
+                        # Map function name to test filter
+                        filter_map = {
+                            "fibonacci": "Fibonacci", "is_palindrome": "Palindrome",
+                            "binary_search": "BinarySearch", "safe_divide": "SafeDivide",
+                            "flatten": "Flatten", "merge_intervals": "MergeIntervals",
+                            "count_words": "CountWords", "find_anagrams": "FindAnagrams",
+                            "topological_sort": "TopologicalSort", "regex_match": "RegexMatch",
+                        }
                         bugs.append({
-                            "id": f"{func['name']}_{mut_name}",
-                            "function": func["name"],
+                            "id": f"{fn}_{mname}_{len(bugs)+1}",
+                            "function": fn,
                             "line_in_body": li,
                             "original": line.strip(),
                             "mutated": mutated.strip(),
                             "difficulty": difficulty,
-                            "description": f"The {func['name']}() function has a subtle bug. Fix it.",
-                            "test_filter": _get_filter(func["name"]),
-                            "mutation_name": mut_name.replace("_", " "),
+                            "description": f"The {fn}() function has a bug. Fix it using the failing test output below.",
+                            "test_filter": filter_map.get(fn, fn.title()),
+                            "mutation_name": mname.replace("_", " "),
                         })
-                        break
+                        break  # one mutation per line
+
     return bugs[:target_count]
-
-
-def _get_filter(fn_name: str) -> str:
-    m = {"fibonacci":"Fibonacci","is_palindrome":"Palindrome","binary_search":"BinarySearch",
-         "safe_divide":"SafeDivide","flatten":"Flatten","merge_intervals":"MergeIntervals",
-         "count_words":"CountWords","find_anagrams":"FindAnagrams",
-         "topological_sort":"TopologicalSort","regex_match":"RegexMatch"}
-    return m.get(fn_name, fn_name.title())
 
 
 def run_tests(test_filter: str = "") -> tuple[int, int, str]:
@@ -152,6 +178,7 @@ def apply_fix(code: str, bug: dict) -> bool:
 def run_rag_experiment(arm_name: str, retrieval_mode: str, bug_pool: list[dict], sessions: int) -> list[dict]:
     print(f"\n{'='*60}")
     print(f"  {arm_name} — {sessions} sessions | Retrieval: {retrieval_mode.upper()}")
+    print(f"  Bug pool: {len(bug_pool)} unique bugs")
     print(f"{'='*60}")
     orig = TESTBED.read_text()
     fixer = RetrievalAugmentedFixer()
@@ -246,12 +273,11 @@ def main():
 
     print(f"{'='*60}")
     print(f"  RETRIEVAL-AUGMENTED FIXING EXPERIMENT")
-    print(f"  New hypothesis: similar past diffs → better fixes")
     print(f"  Model: {MODEL} | {args.sessions} sessions | Retrieval: {args.retrieval.upper()}")
     print(f"{'='*60}")
 
-    bug_pool = generate_hard_bug_pool(target_count=max(30, args.sessions//2))
-    print(f"Generated {len(bug_pool)} hard bugs (targets: topological_sort, regex_match, merge_intervals, binary_search)")
+    bug_pool = generate_bug_pool(target_count=max(30, args.sessions//2))
+    print(f"Generated {len(bug_pool)} unique bugs (across all 10 functions)")
 
     results = run_rag_experiment(f"RAG={args.retrieval.upper()}", args.retrieval, bug_pool, args.sessions)
     analyze({"retrieval": results})
